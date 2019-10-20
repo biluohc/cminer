@@ -45,6 +45,7 @@ pub mod miner;
 pub mod state;
 pub mod util;
 
+use crate::ckb::CkbJob;
 use crate::config::{Config, Currency::*};
 use crate::eth::EthJob;
 use crate::state::State;
@@ -58,6 +59,9 @@ fn fun(config: Config) {
             let state: State<EthJob> = State::new(config, mp);
             miner::fun(state, sc)
         }
-        Ckb => unimplemented!(),
+        Ckb => {
+            let state: State<CkbJob> = State::new(config, mp);
+            miner::fun(state, sc)
+        }
     }
 }

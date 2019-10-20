@@ -11,6 +11,26 @@ pub fn clean_0x(s: &str) -> &str {
     }
 }
 
+use bigint::{H256, U256};
+
+pub fn target_to_difficulty(target: &H256) -> U256 {
+    let d = U256::from(target);
+    if d <= U256::one() {
+        U256::max_value()
+    } else {
+        ((U256::one() << 255) / d) << 1
+    }
+}
+
+/// Convert an Ethash difficulty to the target. Basically just `f(x) = 2^256 / x`.
+pub fn difficulty_to_target(difficulty: &U256) -> H256 {
+    if *difficulty <= U256::one() {
+        U256::max_value().into()
+    } else {
+        (((U256::one() << 255) / *difficulty) << 1).into()
+    }
+}
+
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 pub fn atomic_id() -> usize {
     static AID: AtomicUsize = AtomicUsize::new(2);

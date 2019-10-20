@@ -1,27 +1,40 @@
-use bigint::{H256, H64, U256};
+use bigint::{H256, H64};
 use bytesize::ByteSize;
 use rayon::current_num_threads;
 use std::sync::Arc;
 
-use crate::eth::proto::{Job, Solution};
-use crate::util::atomic_id;
+use crate::eth::proto::{FormJob, Job, Solution};
+use crate::util::{atomic_id, target_to_difficulty};
 
-pub fn target_to_difficulty(target: &H256) -> U256 {
-    let d = U256::from(target);
-    if d <= U256::one() {
-        U256::max_value()
-    } else {
-        ((U256::one() << 255) / d) << 1
-    }
-}
+pub fn fun() {
+    let notify = r#"{"id":0,"jsonrpc":"2.0","result":["0x93cca7a948af373321f5ba7a5de6b51d60348afd86063fbddd7dc4e553560798","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}"#;
+    let jobform: FormJob = serde_json::from_str(notify).unwrap();
+    let job = jobform.to_job().unwrap();
 
-/// Convert an Ethash difficulty to the target. Basically just `f(x) = 2^256 / x`.
-pub fn difficulty_to_target(difficulty: &U256) -> H256 {
-    if *difficulty <= U256::one() {
-        U256::max_value().into()
-    } else {
-        (((U256::one() << 255) / *difficulty) << 1).into()
+    info!("epoch: {}", job.epoch);
+    let computer = Computer::new(job.epoch);
+
+    let now = std::time::Instant::now();
+    let mut nonce = 0;
+    loop {
+        nonce += 1;
+
+        let solution = computer.compute_raw(&job, nonce);
+
+        info!(
+            "ph: {}, nonce: {}, diff: {}, result: {}, mix: {}",
+            job.powhash,
+            nonce,
+            target_to_difficulty(&solution.target),
+            solution.target,
+            solution.mixed_hash
+        );
+
+        if nonce == 1000_000 {
+            break;
+        }
     }
+    info!("1m {:?}, {} hash/s", now.elapsed(), nonce / now.elapsed().as_secs());
 }
 
 use digest::Digest;

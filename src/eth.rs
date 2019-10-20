@@ -6,40 +6,10 @@ pub mod proto;
 
 use crate::config::TIMEOUT_SECS;
 use crate::state::{Handle, Handler, Req, Run, State, Worker};
-use crate::util;
-use pow::{target_to_difficulty, Computer};
+use crate::util::{self, target_to_difficulty};
+
+use pow::Computer;
 use proto::{make_hashrate, make_login, make_submit, FormJob, Job, METHOD_SUBMIT_WORK};
-
-pub fn fun() {
-    let notify = r#"{"id":0,"jsonrpc":"2.0","result":["0x93cca7a948af373321f5ba7a5de6b51d60348afd86063fbddd7dc4e553560798","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}"#;
-    let jobform: FormJob = serde_json::from_str(notify).unwrap();
-    let job = jobform.to_job().unwrap();
-
-    info!("epoch: {}", job.epoch);
-    let computer = Computer::new(job.epoch);
-
-    let now = std::time::Instant::now();
-    let mut nonce = 0;
-    loop {
-        nonce += 1;
-
-        let solution = computer.compute_raw(&job, nonce);
-
-        info!(
-            "ph: {}, nonce: {}, diff: {}, result: {}, mix: {}",
-            job.powhash,
-            nonce,
-            target_to_difficulty(&solution.target),
-            solution.target,
-            solution.mixed_hash
-        );
-
-        if nonce == 1000_000 {
-            break;
-        }
-    }
-    info!("1m {:?}, {} hash/s", now.elapsed(), nonce / now.elapsed().as_secs());
-}
 
 #[derive(Debug, Clone)]
 pub enum EthJob {
@@ -148,7 +118,7 @@ impl Run for Worker<EthJob> {
 
             if let Some((c, j)) = compute.as_ref() {
                 if let Some(s) = c.compute(j, nonce) {
-                    warn!("found solution: id: {}, nonce: {}, pow: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
+                    warn!("found a solution: id: {}, nonce: {}, pow: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(req).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                 }
                 self.hashrate.add(1);

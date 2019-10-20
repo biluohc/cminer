@@ -48,7 +48,7 @@ pub struct Config {
     pub user: String,
     #[structopt(short, long, default_value = "0v0")]
     pub worker: String,
-    #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "-v(Info), -vv+(Trace)")]
+    #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "-v(Info), -v -v+(Trace)")]
     pub verbose: u8,
 }
 
