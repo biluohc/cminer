@@ -54,7 +54,7 @@ pub trait Run: std::fmt::Debug + Send + 'static {
 
 #[derive(Debug, Clone)]
 pub struct Statev<C> {
-    pub hashrate: Counter,
+    pub hashrates: Vec<Counter>,
     pub jobsc: Counter,
     pub job: C,
     pub submitc: usize,
@@ -65,7 +65,7 @@ pub struct Statev<C> {
 impl<C> Statev<C> {
     pub fn to_metric(&self) -> Metric {
         Metric {
-            hashrate: self.hashrate.clear(),
+            hashrate: self.hashrates.iter().map(|h| h.clear()).sum(),
             jobsc: self.jobsc.get(),
             submitc: self.submitc,
             acceptc: self.acceptc,
@@ -86,7 +86,7 @@ pub struct Metric {
 impl<C: Default> Statev<C> {
     pub fn new() -> Self {
         Self {
-            hashrate: Counter::new(0),
+            hashrates: vec![],
             jobsc: Counter::new(1),
             job: C::default(),
             submitc: 0,
@@ -147,17 +147,20 @@ where
         }
 
         let n_worker = self.config().workers;
-        let lock = self.value().lock();
-        let lock = &*lock;
+        let mut lock = self.value().lock();
+        let lock = &mut *lock;
 
         for idx in 0..n_worker {
+            let hashrate = Counter::new(1);
+            lock.hashrates.push(hashrate.clone());
+
             let mut worker = Worker {
                 job: (*self).clone(),
                 jobsc: lock.jobsc.clone(),
-                hashrate: lock.hashrate.clone(),
                 sender: self.sender().clone(),
                 idx: idx as _,
                 step: n_worker as _,
+                hashrate,
             };
             rayon::spawn(move || worker.run());
         }

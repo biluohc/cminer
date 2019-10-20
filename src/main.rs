@@ -48,20 +48,10 @@ pub mod util;
 use crate::ckb::CkbJob;
 use crate::config::{Config, Currency::*};
 use crate::eth::EthJob;
-use crate::state::State;
 
 fn fun(config: Config) {
-    use tokio::sync::mpsc;
-
-    let (mp, sc) = mpsc::channel(32);
     match config.currency {
-        Eth => {
-            let state: State<EthJob> = State::new(config, mp);
-            miner::fun(state, sc)
-        }
-        Ckb => {
-            let state: State<CkbJob> = State::new(config, mp);
-            miner::fun(state, sc)
-        }
+        Eth => miner::fun::<EthJob>(config),
+        Ckb => miner::fun::<CkbJob>(config),
     }
 }

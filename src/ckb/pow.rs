@@ -24,10 +24,9 @@ impl Computer {
     pub fn compute_raw(&mut self, _job: &Job, nonce: u128) -> Solution {
         let nonce_bytes: Nonce = nonce.to_be_bytes();
 
+        // (&mut self.cache[32..]).copy_from_slice(&nonce_bytes[..]);
         unsafe {
-            let np = &nonce_bytes[0] as *const u8;
-            let cp = &mut self.cache[32] as *mut u8;
-            std::ptr::copy(np, cp, 16);
+            std::ptr::copy_nonoverlapping((&nonce_bytes[..]).as_ptr(), (&mut self.cache[32..]).as_mut_ptr(), 16);
         }
 
         let mut hash: Hash = [0u8; 32];

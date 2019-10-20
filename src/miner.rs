@@ -5,21 +5,26 @@ use tokio::{
     net::TcpStream,
     prelude::*,
     runtime::current_thread::Runtime,
+    sync::mpsc,
 };
 
 use std::error::Error;
 use std::{thread, time};
 
 use crate::{
-    config::timeout,
+    config::{timeout, Config},
     state::{Handler, ReqReceiver, State},
     util::{exited, sleep_secs},
 };
 
-pub fn fun<C>(state: State<C>, mut sc: ReqReceiver)
+pub fn fun<C>(config: Config)
 where
+    C: Default,
     State<C>: Handler<C>,
 {
+    let (mp, mut sc) = mpsc::channel(32);
+    let state: State<C> = State::new(config, mp);
+
     state.login().unwrap();
 
     let state_clone = state.clone();
