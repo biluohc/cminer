@@ -37,18 +37,18 @@ impl std::str::FromStr for PoolAddr {
 
 #[derive(Debug, Clone, StructOpt)]
 pub struct Config {
-    #[structopt(short, long)]
+    #[structopt(short, long, help = "The address of pool: Host/IP:port")]
     pub pool: PoolAddr,
-    #[structopt(long, default_value = "128", help = "default is NumCPUs, if arg > it, will set as it")]
+    #[structopt(long, default_value = "128", help = "Default is NumCPUs, if arg > it, will set as it")]
     pub workers: usize,
     #[structopt(short, long, default_value = "ckb")]
-    #[structopt(possible_values = &Currency::variants(), case_insensitive = true)]
+    #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
     pub currency: Currency,
-    #[structopt(short, long, default_value = "sp_yos")]
+    #[structopt(short, long, default_value = "sp_yos", help ="User")]
     pub user: String,
-    #[structopt(short, long, default_value = "0v0")]
+    #[structopt(short, long, default_value = "0v0", help ="Name")]
     pub worker: String,
-    #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "-v(Info), -v -v+(Trace)")]
+    #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
     pub verbose: u8,
 }
 
