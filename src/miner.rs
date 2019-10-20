@@ -5,27 +5,25 @@ use tokio::{
     net::TcpStream,
     prelude::*,
     runtime::current_thread::Runtime,
-    sync::mpsc,
 };
 
 use std::error::Error;
 use std::{thread, time};
 
 use crate::{
-    config::{timeout, Config},
-    eth::EthJob,
+    config::timeout,
     state::{Handler, ReqReceiver, State},
+    util::{exited, sleep_secs},
 };
 
-pub fn fun() {
-    let config = Config::new("eth", "39.106.195.31:3711", 32, "sp_yos", "0v0");
-
-    let (mp, mut sc) = mpsc::channel(32);
-    let state: State<EthJob> = State::new(config, mp.clone());
+pub fn fun<C>(state: State<C>, mut sc: ReqReceiver)
+where
+    State<C>: Handler<C>,
+{
     state.login().unwrap();
 
     let state_clone = state.clone();
-    let client = thread::Builder::new()
+    let _client = thread::Builder::new()
         .name("toko".into())
         .spawn(move || {
             let mut runtime = Runtime::new().expect("client Runtime new failed");
@@ -37,22 +35,38 @@ pub fn fun() {
                     future::ready(())
                 }));
 
-                thread::sleep(time::Duration::from_secs(5));
+                sleep_secs(5);
                 count += 1;
             }
         })
         .unwrap();
 
-    state.start_workers();
+    while !state.try_start_workers() {
+        if exited() {
+            return;
+        }
+        sleep_secs(1);
+    }
 
-    client.join().expect("client thread join failed")
+    let mut now = time::Instant::now();
+    while !exited() {
+        let secs = now.elapsed().as_secs();
+        if secs >= 30 {
+            if state.try_show_metric(secs) {
+                now = time::Instant::now();
+            }
+        }
+        sleep_secs(1);
+    }
+
+    state.try_show_metric(now.elapsed().as_secs());
 }
 
 async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize) -> Result<(), Box<dyn Error>>
 where
     S: Handler<C>,
 {
-    let mut stream = TcpStream::connect(&state.config().pool).timeout(timeout()).await??;
+    let mut stream = TcpStream::connect(&state.config().pool.sa).timeout(timeout()).await??;
 
     info!("#{} tcp connect to {} ok", count, state.config().pool);
 

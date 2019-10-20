@@ -1,14 +1,14 @@
 use serde_json;
-use std::{mem, thread};
+use std::mem;
 
 pub mod pow;
 pub mod proto;
 
-use crate::config::timeout;
+use crate::config::TIMEOUT_SECS;
 use crate::state::{Handle, Handler, Req, Run, State, Worker};
 use crate::util;
 use pow::{target_to_difficulty, Computer};
-use proto::{make_login, make_submit, FormJob, Job};
+use proto::{make_hashrate, make_login, make_submit, FormJob, Job, METHOD_SUBMIT_WORK};
 
 pub fn fun() {
     let notify = r#"{"id":0,"jsonrpc":"2.0","result":["0x93cca7a948af373321f5ba7a5de6b51d60348afd86063fbddd7dc4e553560798","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}"#;
@@ -65,14 +65,19 @@ impl Default for EthJob {
 
 impl Handle for State<EthJob> {
     fn inited(&self) -> bool {
-        use std::ops::Deref;
-        let lock = self.value().lock();
-        lock.deref().job.is_compute()
+        self.value().try_lock().map(|l| (*l).job.is_compute()).unwrap_or(false)
     }
     fn login_request(&self) -> Req {
         make_login(&self.config())
     }
+    fn hashrate_request(&self, hashrate: u64) -> Option<Req> {
+        Some(make_hashrate(hashrate))
+    }
     fn handle_request(&self, req: Req) -> util::Result<String> {
+        if req.1 == METHOD_SUBMIT_WORK {
+            let mut lock = self.value().lock();
+            *&mut (*lock).submitc += 1
+        }
         trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
         Ok(req.2)
     }
@@ -80,7 +85,7 @@ impl Handle for State<EthJob> {
         if let Ok(jf) = serde_json::from_str::<FormJob>(&resp) {
             match jf.to_job() {
                 Ok(mut j) => {
-                    info!("job: {}, epoch: {}, diff: {}", j.powhash, j.epoch, target_to_difficulty(&j.target));
+                    info!("job: {}, epoch: {}, diff: {}, nonce: {}", j.powhash, j.epoch, target_to_difficulty(&j.target), j.nonce);
                     let mut lock = self.value().lock();
                     let lock = &mut *lock;
                     j.id = lock.jobsc.get() + 1;
@@ -146,11 +151,11 @@ impl Run for Worker<EthJob> {
                     warn!("found solution: id: {}, nonce: {}, pow: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(req).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                 }
+                self.hashrate.add(1);
                 nonce += self.step;
-            // self.hashrate.add(1);
             } else {
-                warn!("miner {} sleep {:?}", self.idx, timeout());
-                thread::sleep(timeout())
+                warn!("miner {} sleep {} secs", self.idx, TIMEOUT_SECS);
+                util::sleep_secs(TIMEOUT_SECS);
             }
         }
 

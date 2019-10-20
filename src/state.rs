@@ -1,14 +1,13 @@
+use bytesize::ByteSize;
 use parking_lot::Mutex;
-use rayon::current_num_threads;
 use tokio::sync::mpsc;
 
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use std::thread;
 
-use crate::config::{timeout, Config};
+use crate::config::Config;
 use crate::util;
 
 pub type Req = (usize, &'static str, String);
@@ -63,6 +62,27 @@ pub struct Statev<C> {
     pub refusec: usize,
 }
 
+impl<C> Statev<C> {
+    pub fn to_metric(&self) -> Metric {
+        Metric {
+            hashrate: self.hashrate.clear(),
+            jobsc: self.jobsc.get(),
+            submitc: self.submitc,
+            acceptc: self.acceptc,
+            refusec: self.refusec,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Metric {
+    pub hashrate: usize,
+    pub jobsc: usize,
+    pub submitc: usize,
+    pub acceptc: usize,
+    pub refusec: usize,
+}
+
 impl<C: Default> Statev<C> {
     pub fn new() -> Self {
         Self {
@@ -80,17 +100,15 @@ impl<C: Default> Statev<C> {
 pub struct State<C>(Arc<(Mutex<Statev<C>>, Config, ReqSender)>);
 
 impl<C: Default> State<C> {
-    pub fn new(mut config: Config, mp: ReqSender) -> Self {
-        if config.workers > current_num_threads() {
-            config.workers = current_num_threads();
-        }
+    pub fn new(config: Config, mp: ReqSender) -> Self {
         Self(Arc::new((Mutex::new(Statev::new()), config, mp)))
     }
 }
 
-pub trait Handle: Clone + std::fmt::Debug {
+pub trait Handle: Clone + std::fmt::Debug + Send + Sized + 'static {
     fn inited(&self) -> bool;
     fn login_request(&self) -> Req;
+    fn hashrate_request(&self, hashrate: u64) -> Option<Req>;
     fn handle_request(&self, req: Req) -> util::Result<String>;
     fn handle_response(&self, _resp: String) -> util::Result<()>;
 }
@@ -100,7 +118,8 @@ pub trait Handler<C>: Handle {
     fn value(&self) -> &Mutex<Statev<C>>;
     fn sender(&self) -> &ReqSender;
     fn login(&self) -> util::Result<()>;
-    fn start_workers(&self);
+    fn try_start_workers(&self) -> bool;
+    fn try_show_metric(&self, secs: u64) -> bool;
 }
 
 impl<C> Handler<C> for State<C>
@@ -122,9 +141,9 @@ where
         self.sender().clone().try_send(login_request)?;
         Ok(())
     }
-    fn start_workers(&self) {
-        while !self.inited() {
-            thread::sleep(timeout())
+    fn try_start_workers(&self) -> bool {
+        if !self.inited() {
+            return false;
         }
 
         let n_worker = self.config().workers;
@@ -142,6 +161,34 @@ where
             };
             rayon::spawn(move || worker.run());
         }
-        info!("start {} workers", n_worker)
+
+        info!("start {} workers", n_worker);
+        true
+    }
+    fn try_show_metric(&self, secs: u64) -> bool {
+        self.value()
+            .try_lock()
+            .map(|lock| lock.to_metric())
+            .map(|m| {
+                let secs = secs | 1;
+                let hashrate = (m.hashrate as u64) / secs;
+
+                info!(
+                    "hashrate: {}, jobs: {}, submit: {}, accept: {}, refuse: {}",
+                    ByteSize(hashrate),
+                    m.jobsc,
+                    m.submitc,
+                    m.acceptc,
+                    m.refusec
+                );
+
+                hashrate
+            })
+            .map(|h| {
+                if let Some(req) = self.hashrate_request(h) {
+                    self.sender().clone().try_send(req).map_err(|e| error!("try send hashrate failed: {:?}", e)).ok();
+                }
+            })
+            .is_some()
     }
 }

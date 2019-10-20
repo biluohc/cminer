@@ -3,13 +3,27 @@
 #[macro_use]
 extern crate serde;
 #[macro_use]
+extern crate structopt;
+#[macro_use]
 pub extern crate nonblock_logger;
 
 use nonblock_logger::{log::LevelFilter, BaseFilter, BaseFormater, NonblockLogger};
+use structopt::StructOpt;
 
 fn main() {
+    let config = Config::from_args().fix_workers();
+    let pkg = env!("CARGO_PKG_NAME");
+    let log = config.log();
+    println!("{}: {:?}, {:?}", pkg, log, config);
+
     let formater = BaseFormater::new().local(true).color(true).level(4);
-    let filter = BaseFilter::new().starts_with(true).chain("tokio", LevelFilter::Info).chain("mio", LevelFilter::Info);
+    let filter = BaseFilter::new()
+        .max_level(log)
+        .starts_with(true)
+        .notfound(false)
+        .chain(pkg, log)
+        .chain("tokio", LevelFilter::Info)
+        .chain("mio", LevelFilter::Info);
 
     let _handle = NonblockLogger::new()
         .formater(formater)
@@ -19,7 +33,9 @@ fn main() {
         .map_err(|e| eprintln!("failed to init nonblock_logger: {:?}", e))
         .unwrap();
 
-    miner::fun()
+    util::catch_ctrlc();
+
+    fun(config)
 }
 
 pub mod ckb;
@@ -28,3 +44,20 @@ pub mod eth;
 pub mod miner;
 pub mod state;
 pub mod util;
+
+use crate::config::{Config, Currency::*};
+use crate::eth::EthJob;
+use crate::state::State;
+
+fn fun(config: Config) {
+    use tokio::sync::mpsc;
+
+    let (mp, sc) = mpsc::channel(32);
+    match config.currency {
+        Eth => {
+            let state: State<EthJob> = State::new(config, mp);
+            miner::fun(state, sc)
+        }
+        Ckb => unimplemented!(),
+    }
+}

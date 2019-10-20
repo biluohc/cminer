@@ -84,11 +84,15 @@ impl fmt::Debug for Computer {
 
 impl Computer {
     pub fn new(epoch: usize) -> Self {
-        warn!("Computer::new, epoch: {}, current_num_threads: {}", epoch, current_num_threads());
         let light_size = ethash::get_cache_size(epoch);
         let full_size = ethash::get_full_size(epoch);
-        // trace!("light-size: {}, {}", light_size, ByteSize::b(light_size as _));
-        info!("full_-size: {}, {}", full_size, ByteSize::b(full_size as _));
+        warn!(
+            "Computer::new, epoch: {}, light: {}, full: {}, current_num_threads: {}",
+            epoch,
+            ByteSize::b(light_size as _),
+            ByteSize::b(full_size as _),
+            current_num_threads()
+        );
 
         let mut light = Vec::with_capacity(light_size);
         light.resize(light_size, 0u8);
@@ -97,7 +101,7 @@ impl Computer {
 
         let full = Arc::from(FullBytes::new(full_size));
         make_full(&full, &light);
-        warn!("Computer::new ok, epoch: {}, current_num_threads: {}", epoch, current_num_threads());
+        warn!("Computer::new ok, epoch: {}", epoch);
 
         Self { epoch, full }
     }
