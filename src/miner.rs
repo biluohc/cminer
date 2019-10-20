@@ -25,8 +25,6 @@ where
     let (mp, mut sc) = mpsc::channel(32);
     let state: State<C> = State::new(config, mp);
 
-    state.login().unwrap();
-
     let state_clone = state.clone();
     let _client = thread::Builder::new()
         .name("toko".into())
@@ -74,6 +72,7 @@ where
     let mut stream = TcpStream::connect(&state.config().pool.sa).timeout(timeout()).await??;
 
     info!("#{} tcp connect to {} ok", count, state.config().pool);
+    state.login().expect("miner.login");
 
     let codec = LinesCodec::new_with_max_length(1024);
     let (r, w) = stream.split();

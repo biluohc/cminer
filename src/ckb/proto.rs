@@ -30,6 +30,7 @@ pub fn parse_job(form: FormJob) -> Result<Job, &'static str> {
     Ok(Job {
         jobid: form.0.clone(),
         powhash: form.1.clone(),
+        height: form.2,
         nonce1_bytes: 0,
         target: 0.into(),
         nonce: 0,
@@ -61,6 +62,7 @@ pub struct Job {
     pub powhash: String,
     pub target: H256,
     pub nonce: u128,
+    pub height: u64,
     pub nonce1_bytes: usize,
 }
 
@@ -84,7 +86,7 @@ pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
     let nonce_submit = hex_string(nonce_bytes_submit).map_err(|e| error!("hex_string(nonce_bytes_submit) error: {:?}", e)).ok()?;
 
     let req = format!(r#"{{"id":{},"method":"{}","params":["{}","{}","{}"]}}"#, solution.id, METHOD_SUBMIT_WORK, "", job.jobid, nonce_submit);
-    Some((solution.id, METHOD_SUBMIT_WORK, req))
+    Some((solution.id, METHOD_SUBMIT_WORK, req).into())
 }
 
 // r: {"id":0,"method":"mining.subscribe","params":["ckbminer-v1.0.0",null]}
@@ -98,7 +100,7 @@ pub fn make_login(config: &Config) -> Req {
         {{"id":0,"method":"{}","params":["{}.{}","x"]}}"#,
         METHOD_SUBSCRIBE, METHOD_AUTHORIZE, config.user, config.worker
     );
-    (1, METHOD_SUBSCRIBE, login)
+    (0, METHOD_SUBSCRIBE, login).into()
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]

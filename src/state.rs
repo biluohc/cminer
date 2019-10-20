@@ -7,12 +7,22 @@ use std::sync::{
     Arc,
 };
 
-use crate::config::Config;
+use crate::config::{timeout, Config};
+use crate::reqs::Reqs;
 use crate::util;
 
-pub type Req = (usize, &'static str, String);
+pub type ReqTuple = (usize, &'static str, String);
 pub type ReqSender = mpsc::Sender<Req>;
 pub type ReqReceiver = mpsc::Receiver<Req>;
+
+#[derive(Debug, Clone)]
+pub struct Req(pub usize, pub &'static str, pub String);
+
+impl From<ReqTuple> for Req {
+    fn from((i, m, q): ReqTuple) -> Self {
+        Self(i, m, q)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Counter(Arc<AtomicUsize>, usize);
@@ -57,9 +67,10 @@ pub struct Statev<C> {
     pub hashrates: Vec<Counter>,
     pub jobsc: Counter,
     pub job: C,
+    pub reqs: Reqs,
     pub submitc: usize,
     pub acceptc: usize,
-    pub refusec: usize,
+    pub rejectc: usize,
 }
 
 impl<C> Statev<C> {
@@ -69,7 +80,7 @@ impl<C> Statev<C> {
             jobsc: self.jobsc.get(),
             submitc: self.submitc,
             acceptc: self.acceptc,
-            refusec: self.refusec,
+            rejectc: self.rejectc,
         }
     }
 }
@@ -80,18 +91,19 @@ pub struct Metric {
     pub jobsc: usize,
     pub submitc: usize,
     pub acceptc: usize,
-    pub refusec: usize,
+    pub rejectc: usize,
 }
 
 impl<C: Default> Statev<C> {
     pub fn new() -> Self {
         Self {
+            reqs: Reqs::new(),
             hashrates: vec![],
             jobsc: Counter::new(1),
             job: C::default(),
             submitc: 0,
             acceptc: 0,
-            refusec: 0,
+            rejectc: 0,
         }
     }
 }
@@ -171,18 +183,21 @@ where
     fn try_show_metric(&self, secs: u64) -> bool {
         self.value()
             .try_lock()
-            .map(|lock| lock.to_metric())
+            .map(|mut lock| {
+                lock.reqs.clear_timeouts(&timeout(), |req, du| warn!("request {} timeout {:?}, {}", req.id, du, req.method));
+                lock.to_metric()
+            })
             .map(|m| {
                 let secs = secs | 1;
                 let hashrate = (m.hashrate as u64) / secs;
 
                 info!(
-                    "hashrate: {}, jobs: {}, submit: {}, accept: {}, refuse: {}",
+                    "hashrate: {}, jobs: {}, submit: {}, accepted: {}, rejected: {}",
                     ByteSize(hashrate),
                     m.jobsc,
                     m.submitc,
                     m.acceptc,
-                    m.refusec
+                    m.rejectc
                 );
 
                 hashrate

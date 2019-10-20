@@ -42,6 +42,7 @@ pub mod ckb;
 pub mod config;
 pub mod eth;
 pub mod miner;
+pub mod reqs;
 pub mod state;
 pub mod util;
 
@@ -51,7 +52,7 @@ use crate::eth::EthJob;
 
 fn fun(config: Config) {
     match config.currency {
-        Eth => miner::fun::<EthJob>(config),
         Ckb => miner::fun::<CkbJob>(config),
+        Eth => miner::fun::<EthJob>(config),
     }
 }

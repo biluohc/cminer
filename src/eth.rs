@@ -9,7 +9,7 @@ use crate::state::{Handle, Handler, Req, Run, State, Worker};
 use crate::util::{self, target_to_difficulty};
 
 use pow::Computer;
-use proto::{make_hashrate, make_login, make_submit, FormJob, Job, METHOD_SUBMIT_WORK};
+use proto::{make_hashrate, make_login, make_submit, FormJob, FormResult, Job, METHOD_SUBMIT_WORK};
 
 #[derive(Debug, Clone)]
 pub enum EthJob {
@@ -44,14 +44,18 @@ impl Handle for State<EthJob> {
         Some(make_hashrate(hashrate))
     }
     fn handle_request(&self, req: Req) -> util::Result<String> {
+        let mut lock = self.value().lock();
+        lock.reqs.add(&req);
+
         if req.1 == METHOD_SUBMIT_WORK {
-            let mut lock = self.value().lock();
-            *&mut (*lock).submitc += 1
+            *&mut (*lock).submitc += 1;
         }
         trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
         Ok(req.2)
     }
     fn handle_response(&self, resp: String) -> util::Result<()> {
+        trace!("resp: {}", resp);
+
         if let Ok(jf) = serde_json::from_str::<FormJob>(&resp) {
             match jf.to_job() {
                 Ok(mut j) => {
@@ -81,8 +85,28 @@ impl Handle for State<EthJob> {
                 }
                 Err(e) => error!("handle job({:?}) error: {}", jf.result, e),
             }
+        } else if let Ok(FormResult { id, result, error }) = serde_json::from_str(&resp) {
+            let mut lock = self.value().lock();
+            let lock = &mut *lock;
+
+            if let Some(req) = lock.reqs.remove(id) {
+                let costed = req.time.elapsed();
+                if req.method == METHOD_SUBMIT_WORK {
+                    if result {
+                        lock.acceptc += 1;
+                        info!("submit {} accepted {:?}", id, costed);
+                    } else {
+                        lock.rejectc += 1;
+                        error!("submit {} rejected {:?}, error: {:?}", id, costed, error);
+                    }
+                } else {
+                    info!("request {}#{} {:?}, error: {:?}", id, req.method, costed, error);
+                }
+            } else {
+                warn!("unkown response id: {}, result: {}, error: {:?}", id, result, error);
+            }
         } else {
-            trace!("resp: {}", resp);
+            error!("unkown resp: {}", resp);
         }
 
         Ok(())

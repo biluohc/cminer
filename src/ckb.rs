@@ -47,14 +47,17 @@ impl Handle for State<CkbJob> {
         None
     }
     fn handle_request(&self, req: Req) -> util::Result<String> {
+        let mut lock = self.value().lock();
+        lock.reqs.add(&req);
         if req.1 == METHOD_SUBMIT_WORK {
-            let mut lock = self.value().lock();
-            *&mut (*lock).submitc += 1
+            *&mut (*lock).submitc += 1;
         }
         trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
         Ok(req.2)
     }
     fn handle_response(&self, resp: String) -> util::Result<()> {
+        trace!("resp: {}", resp);
+
         if let Ok(jf) = serde_json::from_str::<MethodForm>(&resp) {
             match jf.to_params() {
                 Ok(jt) => {
@@ -77,7 +80,14 @@ impl Handle for State<CkbJob> {
                             j.nonce = nonce;
                             j.nonce1_bytes = nonce1_bytes;
 
-                            info!("job: {}, powhash: {}, diff: {}, nonce: {:0x}", j.jobid, j.powhash, target_to_difficulty(&j.target), j.nonce);
+                            info!(
+                                "job: {}, height: {}, powhash: {}, diff: {}, nonce: {:0x}",
+                                j.jobid,
+                                j.height,
+                                j.powhash,
+                                target_to_difficulty(&j.target),
+                                j.nonce
+                            );
                             let js = CkbJob::Compute(j);
                             lock.job = js;
                             lock.jobsc.add_slow(1);
@@ -102,7 +112,25 @@ impl Handle for State<CkbJob> {
             // <(id, bool, _), (nonce1, nonce2, _)>
             match rf.to_result() {
                 Ok(Either::Left((id, b, e))) => {
-                    trace!("id: {}, result: {}, error: {:?}", id, b, e);
+                    let mut lock = self.value().lock();
+                    let lock = &mut *lock;
+
+                    if let Some(req) = lock.reqs.remove(id) {
+                        let costed = req.time.elapsed();
+                        if req.method == METHOD_SUBMIT_WORK {
+                            if b {
+                                lock.acceptc += 1;
+                                info!("submit {} accepted {:?}", req.id, costed);
+                            } else {
+                                lock.rejectc += 1;
+                                error!("submit {} rejected {:?}, error: {:?}", req.id, costed, e);
+                            }
+                        } else {
+                            info!("request {}#{} {:?}, error: {:?}", req.id, req.method, costed, e);
+                        }
+                    } else {
+                        warn!("unkown response id: {}, result: {}, error: {:?}", id, b, e);
+                    }
                 }
                 Ok(Either::Right((nonce1, nonce2, e))) => {
                     info!("nonce1: {}, nonce2_bytes: {}, error: {:?}", nonce1, nonce2, e);
@@ -120,7 +148,7 @@ impl Handle for State<CkbJob> {
                 Err(e) => error!("handle result({}) error:  {}", resp, e),
             }
         } else {
-            trace!("resp: {}", resp);
+            error!("unkown resp: {}", resp);
         }
 
         Ok(())

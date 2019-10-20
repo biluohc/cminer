@@ -41,7 +41,7 @@ pub struct Config {
     pub pool: PoolAddr,
     #[structopt(long, default_value = "128", help = "default is NumCPUs, if arg > it, will set as it")]
     pub workers: usize,
-    #[structopt(short, long, default_value = "eth")]
+    #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true)]
     pub currency: Currency,
     #[structopt(short, long, default_value = "sp_yos")]

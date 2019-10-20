@@ -119,7 +119,7 @@ impl Computer {
 
             warn!("Computer::new ok, epoch: {}", epoch);
         } else {
-            error!("Computer::new skip, wokrer: {}", wokrers);
+            error!("Computer::new skip, wokrers: {}", wokrers);
         };
 
         Self { epoch, full }
@@ -156,7 +156,9 @@ impl Computer {
 }
 
 use rayon::prelude::*;
-/// unsafe impl for https://docs.rs/ethash/0.3.1/src/ethash/lib.rs.html#176-184
+
+/// a parallel implementation for https://docs.rs/ethash/0.3.1/src/ethash/lib.rs.html#176-184
+/// it will take more than 40 minutes if using single thread only
 pub fn make_full(full: &Arc<FullBytes>, cache: &Arc<Vec<u8>>) {
     const HASH_BYTES: usize = 64;
 
