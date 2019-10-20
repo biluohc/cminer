@@ -10,9 +10,18 @@ edition = "2018"
 nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
 ethereum-bigint = "0.2.9"# fake, package name is bigint
 parking_lot = "0.9"
+crossbeam = "0.7.2"
 ethash = "0.3.1"
 rayon = "1.2.0"
 digest = "0.8"
 sha3 = "0.8"
 hex = "0.4"
 lru = "0.3"
+
+bytes = "0.4"
+futures-preview = "=0.3.0-alpha.19"
+pin-utils = "=0.1.0-alpha.4"
+tokio = "0.2.0-alpha.6"
+futures-core-preview = "=0.3.0-alpha.19"
+futures-sink-preview = "=0.3.0-alpha.19"
+futures-util-preview = { version = "=0.3.0-alpha.19", features = ["sink"] }
