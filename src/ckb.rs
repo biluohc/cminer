@@ -165,7 +165,7 @@ impl Run for Worker<CkbJob> {
                 self.hashrate.add(1);
                 nonce += self.step as u128;
             } else {
-                warn!("miner {} sleep {} secs", self.idx, TIMEOUT_SECS);
+                warn!("miner {} will sleep {} secs", self.idx, TIMEOUT_SECS);
                 util::sleep_secs(TIMEOUT_SECS);
             }
         }

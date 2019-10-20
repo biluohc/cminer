@@ -3,7 +3,7 @@ name = "cminer"
 edition = "2018"
 version = "0.1.0"
 authors = ["Wspsxing <biluohc@qq.com>"]
-description = "A toy cpu miner for test, suppoted curreny(ETH, CKB..)"
+description = "cminer:  A toy cpu-miner for test impl by Rust, suppoted currency(ETH, CKB..)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

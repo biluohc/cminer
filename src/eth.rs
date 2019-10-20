@@ -55,7 +55,7 @@ impl Handle for State<EthJob> {
         if let Ok(jf) = serde_json::from_str::<FormJob>(&resp) {
             match jf.to_job() {
                 Ok(mut j) => {
-                    info!("job: {}, epoch: {}, diff: {}, nonce: {}", j.powhash, j.epoch, target_to_difficulty(&j.target), j.nonce);
+                    info!("job: {}, epoch: {}, diff: {}, nonce: {:0x}", j.powhash, j.epoch, target_to_difficulty(&j.target), j.nonce);
                     let mut lock = self.value().lock();
                     let lock = &mut *lock;
                     j.id = lock.jobsc.get() + 1;
@@ -118,13 +118,13 @@ impl Run for Worker<EthJob> {
 
             if let Some((c, j)) = compute.as_ref() {
                 if let Some(s) = c.compute(j, nonce) {
-                    warn!("found a solution: id: {}, nonce: {}, pow: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
+                    warn!("found a solution: id: {}, nonce: {:0x}, powhash: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(req).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                 }
                 self.hashrate.add(1);
                 nonce += self.step;
             } else {
-                warn!("miner {} sleep {} secs", self.idx, TIMEOUT_SECS);
+                warn!("miner {} will sleep {} secs", self.idx, TIMEOUT_SECS);
                 util::sleep_secs(TIMEOUT_SECS);
             }
         }
