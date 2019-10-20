@@ -44,12 +44,7 @@ where
         })
         .unwrap();
 
-    while !state.try_start_workers() {
-        if exited() {
-            return;
-        }
-        sleep_secs(1);
-    }
+    state.start_workers();
 
     let mut now = time::Instant::now();
     while !exited() {

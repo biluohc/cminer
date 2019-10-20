@@ -44,9 +44,9 @@ pub struct Config {
     #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
     pub currency: Currency,
-    #[structopt(short, long, default_value = "sp_yos", help ="User")]
+    #[structopt(short, long, default_value = "sp_yos", help = "User")]
     pub user: String,
-    #[structopt(short, long, default_value = "0v0", help ="Name")]
+    #[structopt(short, long, default_value = "0v0", help = "Name")]
     pub worker: String,
     #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
     pub verbose: u8,

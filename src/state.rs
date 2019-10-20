@@ -6,6 +6,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
+use std::thread;
 
 use crate::config::{timeout, Config};
 use crate::reqs::Reqs;
@@ -130,7 +131,7 @@ pub trait Handler<C>: Handle {
     fn value(&self) -> &Mutex<Statev<C>>;
     fn sender(&self) -> &ReqSender;
     fn login(&self) -> util::Result<()>;
-    fn try_start_workers(&self) -> bool;
+    fn start_workers(&self);
     fn try_show_metric(&self, secs: u64) -> bool;
 }
 
@@ -153,11 +154,7 @@ where
         self.sender().clone().try_send(login_request)?;
         Ok(())
     }
-    fn try_start_workers(&self) -> bool {
-        if !self.inited() {
-            return false;
-        }
-
+    fn start_workers(&self) {
         let n_worker = self.config().workers;
         let mut lock = self.value().lock();
         let lock = &mut *lock;
@@ -174,11 +171,10 @@ where
                 step: n_worker as _,
                 hashrate,
             };
-            rayon::spawn(move || worker.run());
+            thread::spawn(move || worker.run());
         }
 
         info!("start {} workers", n_worker);
-        true
     }
     fn try_show_metric(&self, secs: u64) -> bool {
         self.value()

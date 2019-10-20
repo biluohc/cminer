@@ -60,6 +60,7 @@ impl Handle for State<EthJob> {
             match jf.to_job() {
                 Ok(mut j) => {
                     info!("job: {}, epoch: {}, diff: {}, nonce: {:0x}", j.powhash, j.epoch, target_to_difficulty(&j.target), j.nonce);
+                    let mut epoch_is_old = true;
                     let mut lock = self.value().lock();
                     let lock = &mut *lock;
                     j.id = lock.jobsc.get() + 1;
@@ -69,11 +70,16 @@ impl Handle for State<EthJob> {
                             if j.epoch == oj.epoch {
                                 EthJob::Compute((oc, j))
                             } else {
+                                mem::drop(oc);
+                                epoch_is_old = false;
+                                lock.jobsc.add_slow(1);
                                 let c = Computer::new(j.epoch, self.config().workers);
                                 EthJob::Compute((c, j))
                             }
                         }
                         EthJob::Sleep => {
+                            epoch_is_old = false;
+                            lock.jobsc.add_slow(1);
                             let c = Computer::new(j.epoch, self.config().workers);
                             EthJob::Compute((c, j))
                         }
@@ -81,7 +87,9 @@ impl Handle for State<EthJob> {
                     };
 
                     lock.job = js;
-                    lock.jobsc.add_slow(1);
+                    if epoch_is_old {
+                        lock.jobsc.add_slow(1);
+                    }
                 }
                 Err(e) => error!("handle job({:?}) error: {}", jf.result, e),
             }
@@ -124,6 +132,7 @@ impl Run for Worker<EthJob> {
             // info!("job_idx: {}, job_idx2: {}, compute: {}", job_idx, job_idx2, compute.is_some());
 
             if job_idx2 != job_idx {
+                mem::replace(&mut compute, None);
                 let newjob = {
                     let lock = self.job.value().lock();
                     (&*lock).job.clone()
@@ -148,7 +157,7 @@ impl Run for Worker<EthJob> {
                 self.hashrate.add(1);
                 nonce += self.step;
             } else {
-                warn!("miner {} will sleep {} secs", self.idx, TIMEOUT_SECS);
+                trace!("miner {} will sleep {} secs", self.idx, TIMEOUT_SECS);
                 util::sleep_secs(TIMEOUT_SECS);
             }
         }
