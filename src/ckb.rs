@@ -7,7 +7,7 @@ pub mod pow;
 pub mod proto;
 
 use crate::config::TIMEOUT_SECS;
-use crate::state::{Handle, Handler, Req, Run, State, Worker};
+use crate::state::{Handle, Handler, Job as JobID, Req, Run, State, Worker};
 use crate::util::{self, target_to_difficulty};
 
 use pow::{parse_nonce, Computer};
@@ -21,11 +21,11 @@ pub enum CkbJob {
     Exit,
 }
 
-impl CkbJob {
-    pub fn is_compute(&self) -> bool {
+impl JobID for CkbJob {
+    fn jobid(&self) -> String {
         match &self {
-            Self::Compute(_) => true,
-            _ => false,
+            Self::Compute(job) => job.jobid.clone(),
+            _ => "0".to_owned(),
         }
     }
 }
@@ -37,9 +37,6 @@ impl Default for CkbJob {
 }
 
 impl Handle for State<CkbJob> {
-    fn inited(&self) -> bool {
-        self.value().try_lock().map(|l| (*l).job.is_compute()).unwrap_or(false)
-    }
     fn login_request(&self) -> Req {
         make_login(&self.config())
     }
@@ -188,7 +185,7 @@ impl Run for Worker<CkbJob> {
             if let Some(j) = job.as_ref() {
                 if let Some(s) = computer.compute(j, nonce) {
                     warn!("found a solution: id: {}, nonce: {:0x}, jobid: {}, diff: {}", s.id, nonce, j.jobid, target_to_difficulty(&s.target));
-                    make_submit(&s, j).map(|req| self.sender.try_send(req).map_err(|e| error!("try send solution error: {:?}", e)).ok());
+                    make_submit(&s, j).map(|req| self.sender.try_send(Ok(req)).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                 }
                 self.hashrate.add(1);
                 nonce += self.step as u128;

@@ -10,11 +10,11 @@ use std::thread;
 
 use crate::config::{timeout, Config};
 use crate::reqs::Reqs;
-use crate::util;
+use crate::util::{self, DescError};
 
 pub type ReqTuple = (usize, &'static str, String);
-pub type ReqSender = mpsc::Sender<Req>;
-pub type ReqReceiver = mpsc::Receiver<Req>;
+pub type ReqSender = mpsc::Sender<Result<Req, DescError>>;
+pub type ReqReceiver = mpsc::Receiver<Result<Req, DescError>>;
 
 #[derive(Debug, Clone)]
 pub struct Req(pub usize, pub &'static str, pub String);
@@ -47,6 +47,10 @@ impl Counter {
     pub fn alives(&self) -> usize {
         Arc::strong_count(&self.0)
     }
+}
+
+pub trait Job: Clone + Default + std::fmt::Debug + Send + 'static {
+    fn jobid(&self) -> String;
 }
 
 #[derive(Debug)]
@@ -119,7 +123,6 @@ impl<C: Default> State<C> {
 }
 
 pub trait Handle: Clone + std::fmt::Debug + Send + Sized + 'static {
-    fn inited(&self) -> bool;
     fn login_request(&self) -> Req;
     fn hashrate_request(&self, hashrate: u64) -> Option<Req>;
     fn handle_request(&self, req: Req) -> util::Result<String>;
@@ -133,12 +136,14 @@ pub trait Handler<C>: Handle {
     fn login(&self) -> util::Result<()>;
     fn start_workers(&self);
     fn try_show_metric(&self, secs: u64) -> bool;
+    fn jobid(&self) -> Option<String>;
 }
 
 impl<C> Handler<C> for State<C>
 where
-    State<C>: Handle,
+    C: Job,
     Worker<C>: Run,
+    State<C>: Handle,
 {
     fn config(&self) -> &Config {
         &(self.0).1
@@ -151,7 +156,7 @@ where
     }
     fn login(&self) -> util::Result<()> {
         let login_request = self.login_request();
-        self.sender().clone().try_send(login_request)?;
+        self.sender().clone().try_send(Ok(login_request))?;
         Ok(())
     }
     fn start_workers(&self) {
@@ -180,7 +185,9 @@ where
         self.value()
             .try_lock()
             .map(|mut lock| {
-                lock.reqs.clear_timeouts(&timeout(), |req, du| warn!("request {} timeout {:?}, {}", req.id, du, req.method));
+                if lock.reqs.clear_timeouts(&timeout(), |req, du| warn!("request {} timeout {:?}, {}", req.id, du, req.method)) > 0 {
+                    self.sender().clone().try_send(Err("clear_timeouts".into())).expect("clear_timeouts send");
+                }
                 lock.to_metric()
             })
             .map(|m| {
@@ -200,9 +207,12 @@ where
             })
             .map(|h| {
                 if let Some(req) = self.hashrate_request(h) {
-                    self.sender().clone().try_send(req).map_err(|e| error!("try send hashrate failed: {:?}", e)).ok();
+                    self.sender().clone().try_send(Ok(req)).map_err(|e| error!("try send hashrate failed: {:?}", e)).ok();
                 }
             })
             .is_some()
+    }
+    fn jobid(&self) -> Option<String> {
+        self.value().try_lock().map(|l| (*l).job.jobid())
     }
 }

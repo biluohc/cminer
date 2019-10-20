@@ -38,7 +38,7 @@ use crate::util::clean_0x;
 use bigint::H256;
 use rand::random;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Job {
     pub id: usize,
     pub powhash: H256,

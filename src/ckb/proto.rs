@@ -55,7 +55,7 @@ impl MethodForm {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Job {
     pub id: usize,
     pub jobid: String,

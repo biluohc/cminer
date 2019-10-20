@@ -14,7 +14,7 @@ use std::{thread, time};
 use crate::{
     config::{timeout, Config},
     state::{Handler, ReqReceiver, State},
-    util::{exited, sleep_secs},
+    util::{exited, sleep_secs, DescError},
 };
 
 pub fn fun<C>(config: Config)
@@ -47,12 +47,27 @@ where
     state.start_workers();
 
     let mut now = time::Instant::now();
+    let mut jobnow = time::Instant::now();
+    let mut jobid = "".to_owned();
+    let expire = state.config().expire;
     while !exited() {
         let secs = now.elapsed().as_secs();
         if secs >= 30 {
             if state.try_show_metric(secs) {
                 now = time::Instant::now();
             }
+        }
+        if jobnow.elapsed().as_secs() >= expire {
+            let jobid2 = state.jobid();
+            if let Some(id2) = jobid2 {
+                if jobid == id2 {
+                    warn!("job {} alives > {} secs, expired", jobid, expire);
+                    state.sender().clone().try_send(Err("job expired".into())).expect("job expired send");
+                } else {
+                    jobid = id2;
+                }
+            }
+            jobnow = time::Instant::now();
         }
         sleep_secs(1);
     }
@@ -80,21 +95,27 @@ where
     });
 
     let miner_w = FramedWrite::new(w, codec);
-    let miner_w = sc.fold(Ok(miner_w), async move |mw: Result<_, Box<dyn Error>>, msg| match state.handle_request(msg) {
-        Ok(msg) => match mw {
-            Ok(mut miner_w) => match miner_w.send(msg).timeout(timeout()).await {
-                Ok(Ok(())) => Ok(miner_w),
-                Ok(Err(e)) => Err(Box::new(e) as _),
-                Err(e) => Err(Box::new(e) as _),
-            },
-            Err(e) => fatal!("unreachable#miner_w.fold Err2: {:?}", e),
-        },
-        Err(e) => Err(e),
-    });
+    let miner_w = loop_handle_request(sc, miner_w, state);
 
     match future::select(Box::pin(miner_w), miner_r).await {
         future::Either::Left((l, _)) => info!("#{} select finish left(w): {:?}", count, l?),
         future::Either::Right((r, _)) => info!("#{} select finish righ(r): {:?}", count, r),
+    }
+
+    Ok(())
+}
+
+async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S) -> Result<(), Box<dyn Error>>
+where
+    S: Handler<C>,
+    W: SinkExt<String> + std::marker::Unpin,
+{
+    while let Some(msg) = sc.next().await {
+        let req = state.handle_request(msg?)?;
+        let ok = miner_w.send(req).timeout(timeout()).await?;
+        if ok.is_err() {
+            Err(DescError::from("miner_w.send(msg).timeout()"))?;
+        }
     }
 
     Ok(())

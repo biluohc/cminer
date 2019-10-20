@@ -1,7 +1,28 @@
-use std::{error, result};
+use std::{error, fmt, result};
 
 pub type Error = Box<dyn error::Error>;
 pub type Result<T> = result::Result<T, Error>;
+
+#[derive(Debug)]
+pub struct DescError(&'static str);
+
+impl fmt::Display for DescError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.0)
+    }
+}
+
+impl error::Error for DescError {
+    fn description(&self) -> &str {
+        self.0
+    }
+}
+
+impl From<&'static str> for DescError {
+    fn from(s: &'static str) -> Self {
+        Self(s)
+    }
+}
 
 pub fn clean_0x(s: &str) -> &str {
     if s.starts_with("0x") {

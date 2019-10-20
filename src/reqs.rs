@@ -41,7 +41,7 @@ impl Reqs {
     pub fn remove(&mut self, id: usize) -> Option<Req> {
         self.data.remove(&id)
     }
-    pub fn clear_timeouts<F>(&mut self, timeout: &Duration, f: F)
+    pub fn clear_timeouts<F>(&mut self, timeout: &Duration, f: F) -> usize
     where
         F: Fn(Req, Duration),
     {
@@ -58,8 +58,10 @@ impl Reqs {
             })
             .collect::<Vec<_>>();
 
-        for (k, d) in kds {
-            self.remove(k).map(|req| f(req, d));
-        }
+        kds.into_iter()
+            .map(|(k, d)| {
+                self.remove(k).map(|req| f(req, d));
+            })
+            .count()
     }
 }

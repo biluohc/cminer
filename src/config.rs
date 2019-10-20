@@ -39,7 +39,7 @@ impl std::str::FromStr for PoolAddr {
 pub struct Config {
     #[structopt(short, long, help = "The address of pool: Host/IP:port")]
     pub pool: PoolAddr,
-    #[structopt(long, default_value = "128", help = "Default is NumCPUs, if arg > it, will set as it")]
+    #[structopt(long, default_value = "128", help = "Default is NumCPUs, if arg bigger than it, will reset as it")]
     pub workers: usize,
     #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
@@ -50,6 +50,8 @@ pub struct Config {
     pub worker: String,
     #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
     pub verbose: u8,
+    #[structopt(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
+    pub expire: u64,
 }
 
 impl Config {
@@ -70,6 +72,7 @@ impl Config {
         Self {
             workers,
             verbose,
+            expire: 100,
             pool: pool.as_ref().parse().expect("resolve name failed"),
             currency: currency.as_ref().parse().unwrap_or(Currency::Eth),
             user: user.into(),
