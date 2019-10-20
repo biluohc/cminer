@@ -1,6 +1,6 @@
-verbose = "Verbose"  
-                       
+verbose = "Verbose"
+
 format_strings = false
-max_width = 128                          
-tab_spaces = 4                             
-newline_style = "Unix"                      
+max_width = 198         
+tab_spaces = 4                
+newline_style = "Unix"          

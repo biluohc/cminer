@@ -1,0 +1,64 @@
+// {"id":0,"jsonrpc":"2.0","result":["0x6c9e0bfc36b543a626c0d161d263a24df21c97956e665f87389dcc5cd908fedc","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FormJob {
+    pub id: usize,
+    pub jsonrpc: String,
+    pub result: (String, String, String),
+}
+
+impl FormJob {
+    pub fn to_job(&self) -> Result<Job, &'static str> {
+        let seedhash = clean_0x(&self.result.1).parse().map_err(|_| "get seedhash error")?;
+        Ok(Job {
+            powhash: clean_0x(&self.result.0).parse().map_err(|_| "get powhash error")?,
+            target: clean_0x(&self.result.2).parse().map_err(|_| "get target error")?,
+            epoch: get_epoch_number(&seedhash).map_err(|()| "get epoch error")?,
+            nonce: random(),
+            id: 0,
+        })
+    }
+}
+
+use crate::config::Config;
+use crate::eth::pow::get_epoch_number;
+use crate::state::Req;
+use crate::util::clean_0x;
+use bigint::H256;
+use rand::random;
+
+#[derive(Debug, Clone)]
+pub struct Job {
+    pub id: usize,
+    pub powhash: H256,
+    pub target: H256,
+    pub epoch: usize,
+    pub nonce: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Solution {
+    pub id: usize,
+    pub mixed_hash: H256,
+    pub target: H256,
+    pub nonce: u64,
+}
+
+// {"id":5,"method":"eth_submitWork","params":["0x43d4146cf7fe1d4e","0x2e4635265502a0f070d2d16a424f55aa797b915406de5e3685822c8d71d42e86","0x7e830f66cbd3e388920c71b92bf4d1cf429d7581854a3926841314a28530b54a"],"worker":"xox"}
+pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
+    let req = format!(
+        r#"{{"id":{},"method":"eth_submitWork","params":["0x{:016x}", "0x{:?}", "0x{:?}"]}}"#,
+        solution.id, solution.nonce, job.powhash, solution.mixed_hash
+    );
+    Some((solution.id, "eth_submitWork", req))
+}
+
+pub fn make_login(config: &Config) -> Req {
+    let login = format!(
+        r#"{{"id":1,"method":"eth_submitLogin","params":["{}.{}"],"worker":"{}"}}
+    {{"id":2,"method":"eth_getWork","params":[]}}"#,
+        config.user, config.worker, config.worker
+    );
+    (1, "login", login)
+}

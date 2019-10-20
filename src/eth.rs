@@ -1,47 +1,39 @@
-use crate::util::clean_0x;
+use serde_json;
+use std::{mem, thread};
+
+pub mod pow;
+pub mod proto;
+
+use crate::config::timeout;
+use crate::state::{Handle, Handler, Req, Run, State, Worker};
+use crate::util;
+use pow::{target_to_difficulty, Computer};
+use proto::{make_login, make_submit, FormJob, Job};
 
 pub fn fun() {
-    let powhash = "0xf13161f2a062780bad5f2231d9accb64aef699483ca1356fb82e6a36f782ad3f";
-    let seedhash = "0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09";
-    let target = "0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310";
-    info!("powhash: {}", powhash);
-    info!("sedhash: {}", seedhash);
-    info!("target: {}", target);
+    let notify = r#"{"id":0,"jsonrpc":"2.0","result":["0x93cca7a948af373321f5ba7a5de6b51d60348afd86063fbddd7dc4e553560798","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}"#;
+    let jobform: FormJob = serde_json::from_str(notify).unwrap();
+    let job = jobform.to_job().unwrap();
 
-    let seed_hash = clean_0x(seedhash).parse().unwrap();
-    let epoch = get_epoch_number(&seed_hash).unwrap();
-    info!("epoch: {}", epoch);
-
-    let cache_size = ethash::get_cache_size(epoch);
-    let full_size = ethash::get_full_size(epoch);
-    info!("cache-size: {}", cache_size);
-    info!("full_-size: {}", full_size);
-
-    let mut cache = Vec::with_capacity(cache_size);
-    cache.resize(cache_size, 0u8);
-    ethash::make_cache(&mut cache, ethash::get_seedhash(epoch));
-
-    info!("current_num_threads: {}", rayon::current_num_threads());
-    let cache = Arc::from(cache);
-    let full = Arc::from(FullBytes::new(full_size));
-    make_full(&full, &cache);
-    info!("make_full: {}", rayon::current_num_threads());
-
-    let full = full.as_bytes();
-
-    let pow_hash: H256 = clean_0x(powhash).parse().unwrap();
-    let target_h256: H256 = clean_0x(target).parse().unwrap();
+    info!("epoch: {}", job.epoch);
+    let computer = Computer::new(job.epoch);
 
     let now = std::time::Instant::now();
     let mut nonce = 0;
     loop {
         nonce += 1;
-        let (mixed_hash, result) = ethash::hashimoto_full(pow_hash, H64::from(nonce), full_size, full);
 
-        // info!("nonce: {}, diff: {}", nonce, target_to_difficulty(&H256::from(result)));
-        if result <= target_h256 {
-            break;
-        }
+        let solution = computer.compute_raw(&job, nonce);
+
+        info!(
+            "ph: {}, nonce: {}, diff: {}, result: {}, mix: {}",
+            job.powhash,
+            nonce,
+            target_to_difficulty(&solution.target),
+            solution.target,
+            solution.mixed_hash
+        );
+
         if nonce == 1000_000 {
             break;
         }
@@ -49,190 +41,119 @@ pub fn fun() {
     info!("1m {:?}, {} hash/s", now.elapsed(), nonce / now.elapsed().as_secs());
 }
 
-pub fn target_to_difficulty(target: &H256) -> U256 {
-    let d = U256::from(target);
-    if d <= U256::one() {
-        U256::max_value()
-    } else {
-        ((U256::one() << 255) / d) << 1
-    }
-}
-
-/// Convert an Ethash difficulty to the target. Basically just `f(x) = 2^256 / x`.
-pub fn difficulty_to_target(difficulty: &U256) -> H256 {
-    if *difficulty <= U256::one() {
-        U256::max_value().into()
-    } else {
-        (((U256::one() << 255) / *difficulty) << 1).into()
-    }
-}
-
-use parking_lot::Mutex;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-
-use bigint::{H256, H64, U256};
-use digest::Digest;
-use sha3::Keccak256;
-pub fn get_epoch_number(seed_hash: &H256) -> Result<usize, ()> {
-    let mut epoch = 0;
-    let mut seed = [0u8; 32];
-    while seed != seed_hash[..] {
-        let mut hasher = Keccak256::default();
-        hasher.input(&seed);
-        let output = hasher.result();
-        for i in 0..32 {
-            seed[i] = output[i];
-        }
-        epoch += 1;
-        if epoch > 10000 {
-            eprintln!("Failed to determin epoch");
-            return Err(());
-        }
-    }
-    Ok(epoch)
-}
-
-use std::cell::UnsafeCell;
-unsafe impl Sync for FullBytes {}
-pub struct FullBytes {
-    size: usize,
-    bytes: UnsafeCell<Vec<u8>>,
-}
-
-impl FullBytes {
-    pub fn new(size: usize) -> Self {
-        let mut bytes = Vec::with_capacity(size);
-        bytes.resize(size, 0u8);
-        Self {
-            size,
-            bytes: UnsafeCell::from(bytes),
-        }
-    }
-    pub fn as_mut_bytes(&self) -> &mut [u8] {
-        unsafe { self.bytes.get().as_mut().unwrap().as_mut_slice() }
-    }
-    pub fn as_bytes(&self) -> &[u8] {
-        &*self.as_mut_bytes()
-    }
-    pub fn size(&self) -> usize {
-        self.size
-    }
-}
-
-#[derive(Clone)]
-pub struct Computer {
-    epoch: usize,
-    light: Arc<Vec<u8>>,
-    full: Arc<FullBytes>,
-}
-
-use std::fmt;
-impl fmt::Debug for Computer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {})", self.epoch, self.size())
-    }
-}
-
-impl Computer {
-    pub fn new(epoch: usize) -> Self {
-        info!(
-            "Computer::new, epoch: {}, current_num_threads: {}",
-            epoch,
-            rayon::current_num_threads()
-        );
-        let light_size = ethash::get_cache_size(epoch);
-        let full_size = ethash::get_full_size(epoch);
-        info!("light-size: {}", light_size);
-        info!("full_-size: {}", full_size);
-
-        let mut light = Vec::with_capacity(light_size);
-        light.resize(light_size, 0u8);
-        ethash::make_cache(&mut light, ethash::get_seedhash(epoch));
-        let light = Arc::from(light);
-
-        let full = Arc::from(FullBytes::new(full_size));
-        make_full(&full, &light);
-        info!(
-            "Computer::new ok, epoch: {}, current_num_threads: {}",
-            epoch,
-            rayon::current_num_threads()
-        );
-
-        Self { epoch, light, full }
-    }
-    pub fn epoch(&self) -> usize {
-        self.epoch
-    }
-    pub fn size(&self) -> usize {
-        self.light.len() + self.full.size()
-    }
-}
-
-use rayon::prelude::*;
-/// unsafe impl for https://docs.rs/ethash/0.3.1/src/ethash/lib.rs.html#176-184
-pub fn make_full(full: &Arc<FullBytes>, cache: &Arc<Vec<u8>>) {
-    const HASH_BYTES: usize = 64;
-
-    let dataset = full.as_bytes();
-    let n_scope = dataset.len() / HASH_BYTES;
-    let n_worker = rayon::current_num_threads();
-    let n_task = n_scope / n_worker;
-    let tasks = (0..n_scope).into_iter().collect::<Vec<_>>();
-    let tasks = tasks
-        .chunks(n_task)
-        .map(|ts| (ts, full.clone(), cache.clone()))
-        .collect::<Vec<_>>();
-
-    tasks.into_par_iter().for_each(move |(tasks, full, cache)| {
-        let dataset = full.as_mut_bytes();
-        for i in tasks {
-            let z = ethash::calc_dataset_item(&cache, *i);
-            for j in 0..64 {
-                dataset[i * 64 + j] = z[j];
-            }
-        }
-    })
-}
-
 #[derive(Debug, Clone)]
-pub struct Job {
-    id: usize,
-    powhash: H256,
-    target: H256,
-    nonce: u64,
-}
-
-#[derive(Debug, Clone)]
-pub struct Solution {
-    id: usize,
-    mixed_hash: H256,
-    nonce: u64,
-}
-
-#[derive(Debug, Clone)]
-pub enum JobState {
-    Full((Computer, Job)),
-    Light(Job),
+pub enum EthJob {
+    Compute((Computer, Job)),
     Sleep,
     Exit,
 }
 
-use crossbeam::channel::{Receiver, Sender};
+impl EthJob {
+    pub fn is_compute(&self) -> bool {
+        match &self {
+            Self::Compute(_) => true,
+            _ => false,
+        }
+    }
+}
 
-pub type SolutionSender = Sender<Solution>;
-pub type SolutionReceiver = Receiver<Solution>;
-pub type Counter = Arc<AtomicUsize>;
+impl Default for EthJob {
+    fn default() -> Self {
+        Self::Sleep
+    }
+}
 
-pub type ReqSender = Sender<Solution>;
-// pub type ReqSender = Sender<Solution>;
+impl Handle for State<EthJob> {
+    fn inited(&self) -> bool {
+        use std::ops::Deref;
+        let lock = self.value().lock();
+        lock.deref().job.is_compute()
+    }
+    fn login_request(&self) -> Req {
+        make_login(&self.config())
+    }
+    fn handle_request(&self, req: Req) -> util::Result<String> {
+        trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
+        Ok(req.2)
+    }
+    fn handle_response(&self, resp: String) -> util::Result<()> {
+        if let Ok(jf) = serde_json::from_str::<FormJob>(&resp) {
+            match jf.to_job() {
+                Ok(mut j) => {
+                    info!("job: {}, epoch: {}, diff: {}", j.powhash, j.epoch, target_to_difficulty(&j.target));
+                    let mut lock = self.value().lock();
+                    let lock = &mut *lock;
+                    j.id = lock.jobsc.get() + 1;
 
-#[derive(Debug)]
-pub struct Worker {
-    job: Arc<Mutex<JobState>>,
-    jobs: Counter,
-    hashrate: Counter,
-    sender: SolutionSender,
-    idx: u64,
-    step: u64,
+                    let js = match mem::replace(&mut lock.job, EthJob::Sleep) {
+                        EthJob::Compute((oc, oj)) => {
+                            if j.epoch == oj.epoch {
+                                EthJob::Compute((oc, j))
+                            } else {
+                                let c = Computer::new(j.epoch);
+                                EthJob::Compute((c, j))
+                            }
+                        }
+                        EthJob::Sleep => {
+                            let c = Computer::new(j.epoch);
+                            EthJob::Compute((c, j))
+                        }
+                        EthJob::Exit => return Ok(()),
+                    };
+
+                    lock.job = js;
+                    lock.jobsc.add_slow(1);
+                }
+                Err(e) => error!("handle job({:?}) error: {}", jf.result, e),
+            }
+        } else {
+            trace!("resp: {}", resp);
+        }
+
+        Ok(())
+    }
+}
+
+impl Run for Worker<EthJob> {
+    fn run(&mut self) {
+        let mut job_idx = 0;
+        let mut nonce = 0;
+        let mut compute = None;
+
+        loop {
+            let job_idx2 = self.jobsc.get();
+            // info!("job_idx: {}, job_idx2: {}, compute: {}", job_idx, job_idx2, compute.is_some());
+
+            if job_idx2 != job_idx {
+                let newjob = {
+                    let lock = self.job.value().lock();
+                    (&*lock).job.clone()
+                };
+
+                job_idx = job_idx2;
+                match newjob {
+                    EthJob::Compute(c) => {
+                        nonce = c.1.nonce + self.idx;
+                        compute = Some(c);
+                    }
+                    EthJob::Sleep => compute = None,
+                    EthJob::Exit => break,
+                }
+            }
+
+            if let Some((c, j)) = compute.as_ref() {
+                if let Some(s) = c.compute(j, nonce) {
+                    warn!("found solution: id: {}, nonce: {}, pow: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
+                    make_submit(&s, j).map(|req| self.sender.try_send(req).map_err(|e| error!("try send solution error: {:?}", e)).ok());
+                }
+                nonce += self.step;
+            // self.hashrate.add(1);
+            } else {
+                warn!("miner {} sleep {:?}", self.idx, timeout());
+                thread::sleep(timeout())
+            }
+        }
+
+        warn!("miner {} exit", self.idx);
+    }
 }

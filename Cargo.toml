@@ -9,16 +9,18 @@ edition = "2018"
 [dependencies]
 nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
 ethereum-bigint = "0.2.9"# fake, package name is bigint
+serde = { version = "1.0.101", features = ["derive"]}
+serde_json = "1.0.41"
 parking_lot = "0.9"
-crossbeam = "0.7.2"
+bytesize = "1.0.0"
+# crossbeam = "0.7.2"
 ethash = "0.3.1"
 rayon = "1.2.0"
 digest = "0.8"
+rand = "0.7.2"
 sha3 = "0.8"
 hex = "0.4"
-lru = "0.3"
 
-bytes = "0.4"
 futures-preview = "=0.3.0-alpha.19"
 pin-utils = "=0.1.0-alpha.4"
 tokio = "0.2.0-alpha.6"
