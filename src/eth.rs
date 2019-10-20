@@ -65,12 +65,12 @@ impl Handle for State<EthJob> {
                             if j.epoch == oj.epoch {
                                 EthJob::Compute((oc, j))
                             } else {
-                                let c = Computer::new(j.epoch);
+                                let c = Computer::new(j.epoch, self.config().workers);
                                 EthJob::Compute((c, j))
                             }
                         }
                         EthJob::Sleep => {
-                            let c = Computer::new(j.epoch);
+                            let c = Computer::new(j.epoch, self.config().workers);
                             EthJob::Compute((c, j))
                         }
                         EthJob::Exit => return Ok(()),

@@ -12,7 +12,7 @@ pub fn fun() {
     let job = jobform.to_job().unwrap();
 
     info!("epoch: {}", job.epoch);
-    let computer = Computer::new(job.epoch);
+    let computer = Computer::new(job.epoch, 1);
 
     let now = std::time::Instant::now();
     let mut nonce = 0;
@@ -96,7 +96,7 @@ impl fmt::Debug for Computer {
 }
 
 impl Computer {
-    pub fn new(epoch: usize) -> Self {
+    pub fn new(epoch: usize, wokrers: usize) -> Self {
         let light_size = ethash::get_cache_size(epoch);
         let full_size = ethash::get_full_size(epoch);
         warn!(
@@ -107,14 +107,20 @@ impl Computer {
             current_num_threads()
         );
 
-        let mut light = Vec::with_capacity(light_size);
-        light.resize(light_size, 0u8);
-        ethash::make_cache(&mut light, ethash::get_seedhash(epoch));
-        let light = Arc::from(light);
+        let mut full = Arc::from(FullBytes::new(0));
+        if wokrers > 0 {
+            let mut light = Vec::with_capacity(light_size);
+            light.resize(light_size, 0u8);
+            ethash::make_cache(&mut light, ethash::get_seedhash(epoch));
+            let light = Arc::from(light);
 
-        let full = Arc::from(FullBytes::new(full_size));
-        make_full(&full, &light);
-        warn!("Computer::new ok, epoch: {}", epoch);
+            full = Arc::from(FullBytes::new(full_size));
+            make_full(&full, &light);
+
+            warn!("Computer::new ok, epoch: {}", epoch);
+        } else {
+            error!("Computer::new skip, wokrer: {}", wokrers);
+        };
 
         Self { epoch, full }
     }
