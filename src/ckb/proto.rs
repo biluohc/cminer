@@ -96,7 +96,7 @@ pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
 // p: {"id":0,"result":true,"error":null}
 pub fn make_login(config: &Config) -> Req {
     let login = format!(
-        r#"{{"id":0,"method":"{}","params":["cminer-v0.1.0",null]}}
+        r#"{{"id":0,"method":"{}","params":["cminer-v0.2.0",null]}}
         {{"id":0,"method":"{}","params":["{}.{}","x"]}}"#,
         METHOD_SUBSCRIBE, METHOD_AUTHORIZE, config.user, config.worker
     );
