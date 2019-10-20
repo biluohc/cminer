@@ -1,0 +1,18 @@
+[package]
+name = "cminer"
+version = "0.1.0"
+authors = ["Wspsxing <biluohc@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
+ethereum-bigint = "0.2.9"# fake, package name is bigint
+parking_lot = "0.9"
+ethash = "0.3.1"
+rayon = "1.2.0"
+digest = "0.8"
+sha3 = "0.8"
+hex = "0.4"
+lru = "0.3"
