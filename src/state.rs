@@ -134,9 +134,9 @@ pub trait Handler<C>: Handle {
     fn value(&self) -> &Mutex<Statev<C>>;
     fn sender(&self) -> &ReqSender;
     fn login(&self) -> util::Result<()>;
+    fn jobid(&self) -> Option<String>;
     fn start_workers(&self);
     fn try_show_metric(&self, secs: u64) -> bool;
-    fn jobid(&self) -> Option<String>;
 }
 
 impl<C> Handler<C> for State<C>
@@ -158,6 +158,9 @@ where
         let login_request = self.login_request();
         self.sender().clone().try_send(Ok(login_request))?;
         Ok(())
+    }
+    fn jobid(&self) -> Option<String> {
+        self.value().try_lock().map(|l| (*l).job.jobid())
     }
     fn start_workers(&self) {
         let n_worker = self.config().workers;
@@ -191,7 +194,7 @@ where
                 lock.to_metric()
             })
             .map(|m| {
-                let secs = secs | 1;
+                let secs = if secs > 0 { secs } else { 1 };
                 let hashrate = (m.hashrate as u64) / secs;
 
                 info!(
@@ -211,8 +214,5 @@ where
                 }
             })
             .is_some()
-    }
-    fn jobid(&self) -> Option<String> {
-        self.value().try_lock().map(|l| (*l).job.jobid())
     }
 }
