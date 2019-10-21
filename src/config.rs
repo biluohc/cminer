@@ -58,6 +58,7 @@ impl Config {
         match self.verbose {
             0 => Warn,
             1 => Info,
+            2 => Debug,
             _ => Trace,
         }
     }

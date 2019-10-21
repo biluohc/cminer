@@ -80,7 +80,6 @@ where
     let mut stream = TcpStream::connect(&state.config().pool.sa).timeout(timeout()).await??;
 
     info!("#{} tcp connect to {} ok", count, state.config().pool);
-    state.login().expect("miner.login");
 
     let codec = LinesCodec::new_with_max_length(1024);
     let (r, w) = stream.split();
@@ -92,7 +91,12 @@ where
         future::ready(())
     });
 
-    let miner_w = FramedWrite::new(w, codec);
+    let mut miner_w = FramedWrite::new(w, codec);
+
+    // send login request
+    let req = state.handle_request(state.login_request()).expect("handle_request(login_request)");
+    miner_w.send(req).timeout(timeout()).await??;
+
     let miner_w = loop_handle_request(sc, miner_w, state);
 
     match future::select(Box::pin(miner_w), miner_r).await {
