@@ -1,6 +1,5 @@
 use clap::arg_enum;
 use nonblock_logger::log::LevelFilter::{self, *};
-use rayon::current_num_threads;
 
 arg_enum! {
     #[derive(Debug, Clone, Copy)]
@@ -80,7 +79,7 @@ impl Config {
         }
     }
     pub fn fix_workers(mut self) -> Self {
-        let ws = current_num_threads();
+        let ws = num_cpus::get();
         if self.workers > ws {
             self.workers = ws;
         }
