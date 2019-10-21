@@ -1,4 +1,4 @@
-# cminer:  A toy cpu-miner for test impl by Rust, suppoted currency(CKB, ETH, ETC..)
+# A toy cpu-miner for test impl by Rust, supported currency(CKB, ETH, ETC..)
 
 ## install 
 
