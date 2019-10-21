@@ -22,7 +22,7 @@ impl From<&RawReq> for Req {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Reqs {
     data: Map<usize, Req>,
 }
@@ -58,10 +58,6 @@ impl Reqs {
             })
             .collect::<Vec<_>>();
 
-        kds.into_iter()
-            .map(|(k, d)| {
-                self.remove(k).map(|req| f(req, d));
-            })
-            .count()
+        kds.into_iter().map(|(k, d)| self.remove(k).map(|req| f(req, d))).count()
     }
 }

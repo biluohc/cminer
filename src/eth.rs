@@ -45,7 +45,7 @@ impl Handle for State<EthJob> {
         lock.reqs.add(&req);
 
         if req.1 == METHOD_SUBMIT_WORK {
-            *&mut (*lock).submitc += 1;
+            (*lock).submitc += 1;
         }
         trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
         Ok(req.2)
@@ -129,7 +129,7 @@ impl Run for Worker<EthJob> {
             // info!("job_idx: {}, job_idx2: {}, compute: {}", job_idx, job_idx2, compute.is_some());
 
             if job_idx2 != job_idx {
-                mem::replace(&mut compute, None);
+                compute.take();
                 let newjob = {
                     let lock = self.job.value().lock();
                     (&*lock).job.clone()

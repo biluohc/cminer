@@ -30,7 +30,7 @@ impl std::str::FromStr for PoolAddr {
     type Err = String;
     fn from_str(pool: &str) -> Result<Self, Self::Err> {
         let mut iter = pool.to_socket_addrs().map_err(|e| format!("pool.to_socket_addrs failed: {:?}", e))?;
-        iter.next().map(|sa| Self { str: pool.to_owned(), sa }).ok_or("pool.to_socket_addrs is empty".into())
+        iter.next().map(|sa| Self { str: pool.to_owned(), sa }).ok_or_else(|| "pool.to_socket_addrs is empty".into())
     }
 }
 

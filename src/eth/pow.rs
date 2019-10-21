@@ -30,7 +30,7 @@ pub fn fun() {
             solution.mixed_hash
         );
 
-        if nonce == 1000_000 {
+        if nonce == 1_000_000 {
             break;
         }
     }
@@ -67,8 +67,7 @@ pub struct FullBytes {
 
 impl FullBytes {
     pub fn new(size: usize) -> Self {
-        let mut bytes = Vec::with_capacity(size);
-        bytes.resize(size, 0u8);
+        let bytes = vec![0u8; size];
         Self { size, bytes: UnsafeCell::from(bytes) }
     }
     pub fn as_mut_bytes(&self) -> &mut [u8] {
@@ -109,8 +108,7 @@ impl Computer {
 
         let mut full = Arc::from(FullBytes::new(0));
         if wokrers > 0 {
-            let mut light = Vec::with_capacity(light_size);
-            light.resize(light_size, 0u8);
+            let mut light = vec![0; light_size];
             ethash::make_cache(&mut light, ethash::get_seedhash(epoch));
             let light = Arc::from(light);
 
@@ -166,7 +164,7 @@ pub fn make_full(full: &Arc<FullBytes>, cache: &Arc<Vec<u8>>) {
     let n_scope = dataset.len() / HASH_BYTES;
     let n_worker = current_num_threads();
     let n_task = n_scope / n_worker;
-    let tasks = (0..n_scope).into_iter().collect::<Vec<_>>();
+    let tasks = (0..n_scope).collect::<Vec<_>>();
     let tasks = tasks.chunks(n_task).map(|ts| (ts, full.clone(), cache.clone())).collect::<Vec<_>>();
 
     tasks.into_par_iter().for_each(move |(tasks, full, cache)| {

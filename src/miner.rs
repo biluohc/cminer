@@ -52,10 +52,8 @@ where
     let expire = state.config().expire;
     while !exited() {
         let secs = now.elapsed().as_secs();
-        if secs >= 30 {
-            if state.try_show_metric(secs) {
-                now = time::Instant::now();
-            }
+        if secs >= 30 && state.try_show_metric(secs) {
+            now = time::Instant::now();
         }
         if jobnow.elapsed().as_secs() >= expire {
             let jobid2 = state.jobid();
@@ -114,7 +112,7 @@ where
         let req = state.handle_request(msg?)?;
         let ok = miner_w.send(req).timeout(timeout()).await?;
         if ok.is_err() {
-            Err(DescError::from("miner_w.send(msg).timeout()"))?;
+            return Err(DescError::from("miner_w.send(msg).timeout()").into());
         }
     }
 

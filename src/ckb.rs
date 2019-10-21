@@ -47,7 +47,7 @@ impl Handle for State<CkbJob> {
         let mut lock = self.value().lock();
         lock.reqs.add(&req);
         if req.1 == METHOD_SUBMIT_WORK {
-            *&mut (*lock).submitc += 1;
+            (*lock).submitc += 1;
         }
         trace!("id: {}, method: {}, req: {}", req.0, req.1, req.2);
         Ok(req.2)

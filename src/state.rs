@@ -113,6 +113,12 @@ impl<C: Default> Statev<C> {
     }
 }
 
+impl<C: Default> Default for Statev<C> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct State<C>(Arc<(Mutex<Statev<C>>, Config, ReqSender)>);
 

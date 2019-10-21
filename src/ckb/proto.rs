@@ -44,11 +44,11 @@ impl MethodForm {
         if method == METHOD_NOTIFY {
             serde_json::from_value(self.params)
                 .map_err(|_| "deser_notify error")
-                .and_then(|p: FormJob| parse_job(p).map(|j| Either::Left(j)))
+                .and_then(|p: FormJob| parse_job(p).map(Either::Left))
         } else if method == METHOD_SET_TARGET {
             serde_json::from_value(self.params)
                 .map_err(|_| "deser_target error")
-                .and_then(|p: FormSetTarget| parse_target(p).map(|t| Either::Right(t)))
+                .and_then(|p: FormSetTarget| parse_target(p).map(Either::Right))
         } else {
             Err("unkown MethodForm")
         }

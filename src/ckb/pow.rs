@@ -14,6 +14,12 @@ pub struct Computer {
     cache: Cache,
 }
 
+impl Default for Computer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Computer {
     pub fn new() -> Self {
         Self { cache: [0u8; 48] }
