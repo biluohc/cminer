@@ -25,9 +25,7 @@ digest = "0.8"
 rand = "0.7.2"
 sha3 = "0.8"
 
-futures-preview = "=0.3.0-alpha.19"
-pin-utils = "=0.1.0-alpha.4"
 tokio = "0.2.0-alpha.6"
-futures-core-preview = "=0.3.0-alpha.19"
-futures-sink-preview = "=0.3.0-alpha.19"
+pin-utils = "=0.1.0-alpha.4"
+futures-preview = "=0.3.0-alpha.19"
 futures-util-preview = { version = "=0.3.0-alpha.19", features = ["sink"] }

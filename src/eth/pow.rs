@@ -51,7 +51,7 @@ pub fn get_epoch_number(seed_hash: &H256) -> Result<usize, ()> {
         }
         epoch += 1;
         if epoch > 10000 {
-            eprintln!("Failed to determin epoch");
+            error!("failed to determin epoch: {:?}", seed_hash);
             return Err(());
         }
     }
