@@ -1,9 +1,9 @@
 [package]
 name = "cminer"
 edition = "2018"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Wspsxing <biluohc@qq.com>"]
-description = "A toy cpu-miner for test impl by Rust, supported currency(CKB, ETH, ETC..)"
+description = "A cpuminer impl by Rust, supported currency(CKB, ETH, ETC..)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
