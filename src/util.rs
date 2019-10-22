@@ -1,10 +1,10 @@
-use std::{error, fmt, result};
+use std::{error, fmt, result, time::Instant};
 
 pub type Error = Box<dyn error::Error>;
 pub type Result<T> = result::Result<T, Error>;
 
 #[derive(Debug)]
-pub struct DescError(&'static str);
+pub struct DescError(&'static str, Instant);
 
 impl fmt::Display for DescError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,7 +20,19 @@ impl error::Error for DescError {
 
 impl From<&'static str> for DescError {
     fn from(s: &'static str) -> Self {
-        Self(s)
+        Self(s, Instant::now())
+    }
+}
+
+impl AsRef<Instant> for DescError {
+    fn as_ref(&self) -> &Instant {
+        &self.1
+    }
+}
+
+impl AsRef<str> for DescError {
+    fn as_ref(&self) -> &str {
+        self.0
     }
 }
 

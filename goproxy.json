@@ -1,0 +1,24 @@
+{
+    "eth": {
+        "methods": {
+            "login": "",
+            "submit": ""
+        },
+        "jobExpire": 60,
+        "jobs": [
+            "a",
+            "b"
+        ]
+    },
+    "ckb": {
+        "methods": {
+            "login": "",
+            "submit": ""
+        },
+        "jobExpire": 60,
+        "jobs": [
+            "a",
+            "b"
+        ]
+    }
+}

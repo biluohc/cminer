@@ -9,7 +9,7 @@ use tokio::{
 };
 
 use std::error::Error;
-use std::{thread, time};
+use std::{thread, time::Instant};
 
 use crate::{
     config::{timeout, Config},
@@ -33,8 +33,9 @@ where
 
             let mut count = 0;
             loop {
-                runtime.block_on(connect(&state_clone, &mut sc, count).then(|e| {
-                    error!("#{} connect finish: {:?}, will sleep 5 secs\n", count, e);
+                let start_time = Instant::now();
+                runtime.block_on(connect(&state_clone, &mut sc, count, &start_time).then(|e| {
+                    error!("#{} connect finish {:?} of {:?}, will sleep 5 secs\n", count, start_time.elapsed(), e);
                     future::ready(())
                 }));
 
@@ -46,14 +47,14 @@ where
 
     state.start_workers();
 
-    let mut now = time::Instant::now();
-    let mut jobnow = time::Instant::now();
+    let mut now = Instant::now();
+    let mut jobnow = Instant::now();
     let mut jobid = "".to_owned();
     let expire = state.config().expire;
     while !exited() {
         let secs = now.elapsed().as_secs();
         if secs >= 30 && state.try_show_metric(secs) {
-            now = time::Instant::now();
+            now = Instant::now();
         }
         if jobnow.elapsed().as_secs() >= expire {
             let jobid2 = state.jobid();
@@ -65,7 +66,7 @@ where
                     jobid = id2;
                 }
             }
-            jobnow = time::Instant::now();
+            jobnow = Instant::now();
         }
         sleep_secs(1);
     }
@@ -73,7 +74,7 @@ where
     state.try_show_metric(now.elapsed().as_secs());
 }
 
-async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize) -> Result<(), Box<dyn Error>>
+async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time: &Instant) -> Result<(), Box<dyn Error>>
 where
     S: Handler<C>,
 {
@@ -97,7 +98,7 @@ where
     let req = state.handle_request(state.login_request()).expect("handle_request(login_request)");
     miner_w.send(req).timeout(timeout()).await??;
 
-    let miner_w = loop_handle_request(sc, miner_w, state);
+    let miner_w = loop_handle_request(sc, miner_w, state, start_time);
 
     match future::select(Box::pin(miner_w), miner_r).await {
         future::Either::Left((l, _)) => info!("#{} select finish left(w): {:?}", count, l?),
@@ -107,13 +108,25 @@ where
     Ok(())
 }
 
-async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S) -> Result<(), Box<dyn Error>>
+async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S, start_time: &Instant) -> Result<(), Box<dyn Error>>
 where
     S: Handler<C>,
     W: SinkExt<String> + std::marker::Unpin,
 {
     while let Some(msg) = sc.next().await {
-        let req = state.handle_request(msg?)?;
+        let req = match msg {
+            Ok(req) => req,
+            Err(e) => {
+                let error_time: &Instant = e.as_ref();
+                if error_time <= start_time {
+                    warn!("skip error message belongs to the last connection: {}", e);
+                    continue;
+                } else {
+                    return Err(e.into());
+                }
+            }
+        };
+        let req = state.handle_request(req)?;
         let ok = miner_w.send(req).timeout(timeout()).await?;
         if ok.is_err() {
             return Err(DescError::from("miner_w.send(msg).timeout()").into());

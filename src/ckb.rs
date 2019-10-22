@@ -138,6 +138,11 @@ impl Handle for State<CkbJob> {
                     let job = match mem::replace(&mut lock.job, CkbJob::Sleep) {
                         CkbJob::Sleep => CkbJob::Nonce1t((n1, n1b, 0.into())),
                         CkbJob::Nonce1t((_n1, _n1b, t)) => CkbJob::Nonce1t((n1, n1b, t)),
+                        CkbJob::Compute(mut j) => {
+                            j.nonce = n1;
+                            j.nonce1_bytes = n1b;
+                            CkbJob::Compute(j)
+                        }
                         other => other,
                     };
                     lock.job = job;
