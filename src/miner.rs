@@ -1,7 +1,7 @@
 // #![warn(rust_2018_idioms)]
-use futures::{future, SinkExt};
+use futures::{future, SinkExt, StreamExt};
 use tokio::{
-    codec::{FramedRead, FramedWrite, LinesCodec},
+    codec::{FramedRead, FramedWrite, LinesCodec, LinesCodecError},
     net::TcpStream,
     prelude::*,
     runtime::current_thread::Runtime,
@@ -85,26 +85,40 @@ where
     let codec = LinesCodec::new_with_max_length(1024);
     let (r, w) = stream.split();
 
-    let miner_r = FramedRead::new(r, codec.clone()).for_each(|resp| {
-        if let Err(e) = resp.map_err(|e| Box::new(e) as _).and_then(|resp| state.handle_response(resp)) {
-            error!("resp error: {:?}", e);
-        }
-        future::ready(())
-    });
-
-    let mut miner_w = FramedWrite::new(w, codec);
+    let mut miner_w = FramedWrite::new(w, codec.clone());
 
     // send login request
     let req = state.handle_request(state.login_request()).expect("handle_request(login_request)");
     miner_w.send(req).timeout(timeout()).await??;
 
+    let miner_r = loop_handle_response(FramedRead::new(r, codec), state);
     let miner_w = loop_handle_request(sc, miner_w, state, start_time);
 
-    match future::select(Box::pin(miner_w), miner_r).await {
+    match future::select(Box::pin(miner_w), Box::pin(miner_r)).await {
         future::Either::Left((l, _)) => info!("#{} select finish left(w): {:?}", count, l?),
-        future::Either::Right((r, _)) => info!("#{} select finish righ(r): {:?}", count, r),
+        future::Either::Right((r, _)) => info!("#{} select finish righ(r): {:?}", count, r?),
     }
 
+    Ok(())
+}
+
+async fn loop_handle_response<C, S, R>(mut miner_r: R, state: &S) -> Result<(), Box<dyn Error>>
+where
+    S: Handler<C>,
+    R: StreamExt<Item = Result<String, LinesCodecError>> + std::marker::Unpin,
+{
+    while let Some(msg) = miner_r.next().await {
+        let resp = match msg {
+            Ok(req) => req,
+            Err(e) => {
+                warn!("loop_handle_response failed: {}", e);
+                return Err(e.into());
+            }
+        };
+        if let Err(e) = state.handle_response(resp) {
+            error!("resp error: {:?}", e)
+        }
+    }
     Ok(())
 }
 
