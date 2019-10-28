@@ -1,24 +1,30 @@
 {
     "eth": {
-        "methods": {
-            "login": "",
-            "submit": ""
-        },
-        "jobExpire": 60,
         "jobs": [
-            "a",
-            "b"
-        ]
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x11e7cdf5b0cccdad453d1a1262a155135bdc67121cace5d2953e024811b5c349\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x27c31976d0a0bc7f72bce41020ef9a25c788be1e837406ef6ee66cfa73f06ec2\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0xc454b94fadf6804292b4573aad273458d3da94254f8cd3383a6e0091f3980429\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x3bb4d959558fd0937cba2b42136a29b8dd48f80883fb8877a6872385feef06b8\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0xa5138d0d2fb4a5531d760114cc13e429fc41127e1fc32c2178c7245bac1a0c84\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x112c69389a0c17dc68fe3b587577731ac04c72038b7ba3e33657db09985b0baf\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x09dd82e4e7f6c2e6337e8a6180b4bceab74cda4580e5249cf47ae952510bdb8f\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x0d37a6649d0ccbacc47e9f3e22f530f023c3d3534a358e19a7c2d4bdd016ebb6\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}",
+            "{\"id\":0,\"jsonrpc\":\"2.0\",\"result\":[\"0x2d7f42b458cee799a72053653b2babae1b3e33d465063f232deff2972d6efadf\",\"0x684c5aeadce4fe846eee26c6d5df9180130451ad651a0100532820ca8cd394f6\",\"0x000010c6f7a0b5ed8d36b4c7f34938583621fafc8b0079a2834d26fa3fcc9ea9\"]}"
+        ],
+        "jobExpire": 10
     },
     "ckb": {
-        "methods": {
-            "login": "",
-            "submit": ""
-        },
-        "jobExpire": 60,
         "jobs": [
-            "a",
-            "b"
-        ]
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"b6cf3e54\",\"6b5d49c4969e95e397b66cece8158c3c95b9de5963f2fac79b7c682313232fd9\",126411,\"2ae76985fbabdc517ffea9c6249933ab36b0377ac3c3acb4ab7185c55389a944\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"4e36326f\",\"bd5abcc9a3a6ea25ff21742a74a3d14f818e9bec66dec414248d216411e10ead\",126412,\"6ba935a6050289784f26c0bf6f237e7f41354a9b3e3ed140f2134bbc24c439a7\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"a144410c\",\"def99ca53d16bcc716f87912cd0235fa86dfe75b0ecfa2bf606eaa56699df465\",126413,\"c2249856acc27e85c98cd52d06e6e984cf6d8c7b60fde28ae3656579a21c6c60\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"a5d76e5a\",\"0e85d04572f140c600479a0ec9fe54c1987b6a300a02db56f207b0aba93e0443\",126414,\"1c2c4f24e3cfe1c27ae429d7791c18e913ca1d1765733a7d594203648b59a7f9\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"8d0f1894\",\"44b20bb291ea0e5d2aae98ceda8d1fbbb4fb4bb1bc42528ad547934c9dfcbaa8\",126415,\"47e2b93ee8add7f31ab5934c132275e1e0a93145a8175aa6b0827363904813c6\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"9aaf8754\",\"8e1a897c84af1866c4e1fdd0f1c7c600ade209c95f5af1fa8e7eef1b71d1dacf\",126416,\"eead9e111434784b988ec7079d4645cba717236680bd38517c2740c75cc5d2e4\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"183e6ecf\",\"ea62a7a28f722555d1255c2700ea4dc41b1cf68dcebefe7e5574086e7849c6cf\",126417,\"122e6b17fefe282c5186feaa5139be750e58d88f3ac0902081846ee7323ceb03\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"be18b59b\",\"ce409891be67ec28a3598455a9624c5925e76823c5c1d80d7a5e358d7fbb5846\",126418,\"d7617ef294364063691fd7305cfdd2665ef086171a3f0a89f69e0577c64652fb\",true]}",
+            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"9e8539d7\",\"fb8e4f92301ba3b6708d4caa3d4e0778ab831882045cda48f610fadc60cc15e0\",126419,\"662b27bda31dd75f96855701b3744e83b30808872d4884e6f0d1f528bcef8be1\",true]}"
+        ],
+        "jobExpire": 10
     }
 }

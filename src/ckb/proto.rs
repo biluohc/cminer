@@ -79,7 +79,8 @@ pub const METHOD_SET_TARGET: &str = "mining.set_target";
 pub const METHOD_NOTIFY: &str = "mining.notify";
 pub const METHOD_SUBMIT_WORK: &str = "mining.submit";
 
-// {"id":0,"method":"mining.submit","params":["sp_test.worker1","b1404ef2","000000000000000000084148"]}
+// {"id":8,"method":"mining.submit","params":["sp_test.worker1","b1404ef2","000000000000000000084148"]}
+// {"id":8,"result":true,"error":null}
 pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
     let nonce_bytes = solution.nonce.to_be_bytes();
     let nonce_bytes_submit = &nonce_bytes[job.nonce1_bytes..];
