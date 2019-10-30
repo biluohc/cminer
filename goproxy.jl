@@ -334,7 +334,7 @@ currency = args["currency"]
 config = args["config"]
 
 try
-    if config == "" 
+    if currency == "" 
         csx(port, wa, wa2)
     else 
         configcs = JSON.parse(read(config, String))[currency] |> JSON.json
