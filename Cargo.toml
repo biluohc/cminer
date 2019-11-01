@@ -7,6 +7,10 @@ description = "A cpuminer impl by Rust, supported currency(CKB, ETH, ETC..)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name="simulator"
+path="src/simulator.rs"
+
 [dependencies]
 nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
 ethereum-bigint = "0.2.9"# fake, package name is bigint
