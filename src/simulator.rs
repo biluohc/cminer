@@ -34,7 +34,7 @@ pub fn job() -> &'static str {
 }
 pub fn job_set(jobs: &Vec<String>, id: &mut usize) -> &'static str {
     *id += 1;
-    *id %= *id;
+    *id %= jobs.len();
     unsafe { JOB = std::mem::transmute(jobs[*id].as_str()) };
     job()
 }
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let miners: Arc<Mutex<Map<SocketAddr, mpsc::Sender<String>>>> = Default::default();
     let miners2 = miners.clone();
     tokio::spawn(async move {
-        let mut jobid = 0;
+        let mut jobid = conf.jobs.len() - 1;
         job_set(&conf.jobs, &mut jobid);
 
         let mut interval = Interval::new_interval(Duration::from_secs(conf.job_expire));
