@@ -3,10 +3,15 @@ extern crate ac_derive;
 use ac::Ac;
 
 #[derive(Ac, Debug)]
-pub struct Metric {
+pub struct Acs {
     #[ac(default = 1)]
-    jobs: usize,
-    solutions: usize,
+    ac_usize: usize,
+    ac_u64: u64,
+    ac_u32: u32,
+    ac_u16: u16,
+    // #[ac(defoult = 2)]
+    // #[ac(default = 258)]
+    ac_u8: u8,
     #[ac(skip = true)]
-    skip: u64,
+    skip_i8: i8,
 }

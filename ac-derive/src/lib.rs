@@ -8,8 +8,12 @@ use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 
 use darling::FromField;
 use heck::{ShoutySnakeCase, SnakeCase};
-use quote::quote;
-use syn::Data;
+use quote::{quote, ToTokens};
+use syn::{Data, Field};
+
+use std::collections::BTreeSet as Set;
+use std::convert::TryFrom;
+use std::fmt::Debug;
 
 #[proc_macro_derive(Ac, attributes(ac))]
 pub fn derive_ac(input: TokenStream) -> TokenStream {
@@ -24,38 +28,73 @@ struct AcAttrs {
     default: Option<usize>,
 }
 
+fn gen_ts<N: ToTokens + TryFrom<usize> + Copy>(ty: &str, default: usize, ident: &Ident, name: Ident) -> Option<(TokenStream2, TokenStream2, Ident)>
+where
+    <N as TryFrom<usize>>::Error: Debug,
+{
+    let default = N::try_from(default).map_err(|e| panic!(format!("{}::try_from(default: {}) failed: {:?}", ident, default, e))).unwrap();
+    let ty = Ident::new(ty, Span::call_site());
+
+    let define = quote! {
+    ///pub static #name: #ty = #ty::new(#default);
+    pub static #name: #ty = #ty::new(#default);
+    };
+    let impl_ = quote! {
+        pub fn #ident() -> &'static #ty {
+            &#name
+        }
+    };
+
+    Some((define, impl_, ty))
+}
+
+fn field_to_ts(field: &Field) -> Option<(TokenStream2, TokenStream2, Ident)> {
+    let ty = field.ty.to_token_stream();
+    let tystr = ty.to_string();
+
+    let attrs = AcAttrs::from_field(field);
+    match (field.ident.as_ref(), attrs) {
+        (Some(ident), Ok(ac)) if !ac.skip => {
+            let default = ac.default.unwrap_or(0);
+            let name = Ident::new(&ident.to_string().to_shouty_snake_case(), Span::call_site());
+
+            match tystr.as_str() {
+                "usize" => gen_ts::<usize>("AcUsize", default, ident, name),
+                "u64" => gen_ts::<u64>("AcU64", default, ident, name),
+                "u32" => gen_ts::<u32>("AcU32", default, ident, name),
+                "u16" => gen_ts::<u16>("AcU16", default, ident, name),
+                "u8" => gen_ts::<u8>("AcU8", default, ident, name),
+                unkown => panic!(format!("unsupported field type: {}", unkown)),
+            }
+        }
+        (ident, Err(ace)) => panic!(format!("parse Attrs::from_field({:?}) failed: {:?}", ident, ace)),
+        (None, _) => panic!("unsupported field unamed"),
+        _ => None,
+    }
+}
+
 fn impl_ac_macro(ast: &syn::DeriveInput) -> TokenStream {
     let mut defines = TokenStream2::new();
-    let mut usings = TokenStream2::new();
+    let mut impls = TokenStream2::new();
 
+    let mut tys = Set::new();
     match &ast.data {
         Data::Struct(data) => {
             for (_idx, field) in data.fields.iter().enumerate() {
-                let ac = AcAttrs::from_field(&field);
-
-                match (field.ident.as_ref(), ac) {
-                    (Some(fident), Ok(ac)) if !ac.skip => {
-                        let default = ac.default.unwrap_or(0);
-                        let fname = Ident::new(&fident.to_string().to_shouty_snake_case(), Span::call_site());
-                        let define = quote! {
-                            ///pub static #fname: Counter = Counter::new(#default);
-                            pub static #fname: Counter = Counter::new(#default);
-                        };
-                        let using = quote! {
-                            pub fn #fident() -> &'static Counter {
-                                &#fname
-                            }
-                        };
-
-                        defines.extend(define);
-                        usings.extend(using);
-                    }
-                    _ => {}
+                if let Some((define, impl_, using)) = field_to_ts(field) {
+                    defines.extend(define);
+                    impls.extend(impl_);
+                    tys.insert(using);
                 }
             }
         }
         _ => panic!("unsupported data structure"),
     };
+
+    let mut usings = TokenStream2::new();
+    for ty in tys {
+        usings.extend(quote!(use ac::#ty;));
+    }
 
     let name = &ast.ident;
     let name_module = Ident::new(&name.to_string().to_snake_case(), Span::call_site());
@@ -63,12 +102,12 @@ fn impl_ac_macro(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl Ac for #name {}
         pub mod #name_module {
-            use ac::Counter;
+            #usings
             use super::#name;
 
             #defines
             impl #name {
-                #usings
+                #impls
             }
         }
     };
