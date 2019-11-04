@@ -1,0 +1,16 @@
+[package]
+name = "ac-derive"
+version = "0.1.0"
+authors = ["Wspsxing <biluohc@qq.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+darling = "0.10"
+heck = "0.3"
+quote = "1"
+syn = "1"
