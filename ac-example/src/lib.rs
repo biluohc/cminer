@@ -1,6 +1,5 @@
 #[macro_use]
 extern crate ac_derive;
-use ac::Ac;
 
 #[derive(Ac, Debug)]
 pub struct Acs {

@@ -100,7 +100,7 @@ fn impl_ac_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name_module = Ident::new(&name.to_string().to_snake_case(), Span::call_site());
 
     let gen = quote! {
-        impl Ac for #name {}
+        // impl Ac for #name {}
         pub mod #name_module {
             #usings
             use super::#name;
