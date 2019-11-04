@@ -10,7 +10,7 @@
 
 */
 #[macro_use]
-extern crate ac_derive;
+extern crate ac;
 
 #[derive(Ac, Debug)]
 pub struct Acs {

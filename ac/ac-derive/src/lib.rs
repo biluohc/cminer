@@ -28,8 +28,9 @@ struct AcAttrs {
     default: Option<usize>,
 }
 
-fn gen_ts<N: ToTokens + TryFrom<usize> + Copy>(ty: &str, default: usize, ident: &Ident, name: Ident) -> Option<(TokenStream2, TokenStream2, Ident)>
+fn gen_ts<N>(ty: &str, default: usize, ident: &Ident, name: Ident) -> Option<(TokenStream2, TokenStream2, Ident)>
 where
+    N: ToTokens + TryFrom<usize> + Copy,
     <N as TryFrom<usize>>::Error: Debug,
 {
     let default = N::try_from(default).map_err(|e| panic!(format!("{}::try_from(default: {}) failed: {:?}", ident, default, e))).unwrap();

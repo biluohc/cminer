@@ -3,6 +3,9 @@
 [[package]]
 name = "ac"
 version = "0.1.0"
+dependencies = [
+ "ac-derive 0.1.0",
+]
 
 [[package]]
 name = "ac-derive"
@@ -20,7 +23,6 @@ name = "ac-example"
 version = "0.1.0"
 dependencies = [
  "ac 0.1.0",
- "ac-derive 0.1.0",
 ]
 
 [[package]]
