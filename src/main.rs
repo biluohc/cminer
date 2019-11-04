@@ -3,6 +3,8 @@ extern crate serde;
 #[macro_use]
 extern crate structopt;
 #[macro_use]
+extern crate thiserror;
+#[macro_use]
 pub extern crate nonblock_logger;
 
 use nonblock_logger::{log::LevelFilter, BaseFilter, BaseFormater, NonblockLogger};

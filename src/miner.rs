@@ -8,13 +8,12 @@ use tokio::{
     sync::mpsc,
 };
 
-use std::error::Error;
 use std::{thread, time::Instant};
 
 use crate::{
     config::{timeout, Config},
     state::{Handler, ReqReceiver, State},
-    util::{exited, sleep_secs, DescError},
+    util::{exited, sleep_secs, DescError, Result},
 };
 
 pub fn fun<C>(config: Config)
@@ -74,7 +73,7 @@ where
     state.try_show_metric(now.elapsed().as_secs());
 }
 
-async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time: &Instant) -> Result<(), Box<dyn Error>>
+async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time: &Instant) -> Result<()>
 where
     S: Handler<C>,
 {
@@ -102,10 +101,10 @@ where
     Ok(())
 }
 
-async fn loop_handle_response<C, S, R>(mut miner_r: R, state: &S) -> Result<(), Box<dyn Error>>
+async fn loop_handle_response<C, S, R>(mut miner_r: R, state: &S) -> Result<()>
 where
     S: Handler<C>,
-    R: StreamExt<Item = Result<String, LinesCodecError>> + std::marker::Unpin,
+    R: StreamExt<Item = std::result::Result<String, LinesCodecError>> + std::marker::Unpin,
 {
     while let Some(msg) = miner_r.next().await {
         let resp = match msg {
@@ -122,7 +121,7 @@ where
     Ok(())
 }
 
-async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S, start_time: &Instant) -> Result<(), Box<dyn Error>>
+async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S, start_time: &Instant) -> Result<()>
 where
     S: Handler<C>,
     W: SinkExt<String> + std::marker::Unpin,

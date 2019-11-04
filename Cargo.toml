@@ -11,7 +11,9 @@ description = "A cpuminer impl by Rust, supported currency(CKB, ETH, ETC..)"
 nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
 ethereum-bigint = "0.2.9"# fake, package name is bigint
 serde = { version = "1.0.101", features = ["derive"]}
+thiserror = "1.0.4"
 structopt = "0.3.3"
+anyhow = "1.0.19"
 clap = "2.33"
 serde_json = "1.0.41"
 parking_lot = "0.9"
@@ -29,4 +31,3 @@ sha3 = "0.8"
 tokio = "0.2.0-alpha.6"
 pin-utils = "=0.1.0-alpha.4"
 futures-preview = "=0.3.0-alpha.19"
-futures-util-preview = { version = "=0.3.0-alpha.19", features = ["sink"] }
