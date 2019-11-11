@@ -132,7 +132,7 @@ where
             Err(e) => {
                 let error_time: &Instant = e.as_ref();
                 if error_time <= start_time {
-                    warn!("skip error message belongs to the last connection: {}", e);
+                    warn!("skip error message belongs to the previous connection: {}", e);
                     continue;
                 } else {
                     return Err(e.into());
