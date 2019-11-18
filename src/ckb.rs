@@ -74,7 +74,7 @@ impl Handle for State<CkbJob> {
                             };
 
                             j.target = target;
-                            j.nonce = nonce;
+                            j.nonce = nonce + rand::random::<u64>() as u128;
                             j.nonce1_bytes = nonce1_bytes;
 
                             info!(

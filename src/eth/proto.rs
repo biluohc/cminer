@@ -16,7 +16,7 @@ impl FormJob {
             powhash: clean_0x(&self.result.0).parse().map_err(|_| "get powhash error")?,
             target: clean_0x(&self.result.2).parse().map_err(|_| "get target error")?,
             epoch: get_epoch_number(&seedhash).map_err(|()| "get epoch error")?,
-            nonce: random(),
+            nonce: rand::random(),
             id: 0,
         })
     }
@@ -36,7 +36,6 @@ use crate::eth::pow::get_epoch_number;
 use crate::state::Req;
 use crate::util::clean_0x;
 use bigint::H256;
-use rand::random;
 
 #[derive(Debug, Clone, Hash)]
 pub struct Job {
