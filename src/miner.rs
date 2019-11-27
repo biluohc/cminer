@@ -1,17 +1,11 @@
-// #![warn(rust_2018_idioms)]
-use futures::{future, SinkExt, StreamExt};
-use tokio::{
-    codec::{FramedRead, FramedWrite, LinesCodec, LinesCodecError},
-    net::TcpStream,
-    prelude::*,
-    runtime::current_thread::Runtime,
-    sync::mpsc,
-};
+use futures::{future, FutureExt, SinkExt, StreamExt};
+use tokio::{net::TcpStream, runtime::Builder, sync::mpsc, time::timeout};
+use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec, LinesCodecError};
 
 use std::{thread, time::Instant};
 
 use crate::{
-    config::{timeout, Config},
+    config::{timeout as timeoutv, Config},
     state::{Handler, ReqReceiver, State},
     util::{exited, sleep_secs, DescError, Result},
 };
@@ -28,7 +22,7 @@ where
     let _client = thread::Builder::new()
         .name("toko".into())
         .spawn(move || {
-            let mut runtime = Runtime::new().expect("client Runtime new failed");
+            let mut runtime = Builder::new().enable_all().basic_scheduler().build().expect("client Runtime new failed");
 
             let mut count = 0;
             loop {
@@ -77,7 +71,7 @@ async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time
 where
     S: Handler<C>,
 {
-    let mut stream = TcpStream::connect(&state.config().pool.sa).timeout(timeout()).await??;
+    let mut stream = timeout(timeoutv(), TcpStream::connect(&state.config().pool.sa)).await??;
 
     info!("#{} tcp connect to {} ok", count, state.config().pool);
 
@@ -88,7 +82,7 @@ where
 
     // send login request
     let req = state.handle_request(state.login_request()).expect("handle_request(login_request)");
-    miner_w.send(req).timeout(timeout()).await??;
+    timeout(timeoutv(), miner_w.send(req)).await??;
 
     let miner_r = loop_handle_response(FramedRead::new(r, codec), state);
     let miner_w = loop_handle_request(sc, miner_w, state, start_time);
@@ -126,7 +120,7 @@ where
     S: Handler<C>,
     W: SinkExt<String> + std::marker::Unpin,
 {
-    while let Some(msg) = sc.next().await {
+    while let Some(msg) = sc.recv().await {
         let req = match msg {
             Ok(req) => req,
             Err(e) => {
@@ -140,7 +134,7 @@ where
             }
         };
         let req = state.handle_request(req)?;
-        let ok = miner_w.send(req).timeout(timeout()).await?;
+        let ok = timeout(timeoutv(), miner_w.send(req)).await?;
         if ok.is_err() {
             return Err(DescError::from("miner_w.send(msg).timeout()").into());
         }

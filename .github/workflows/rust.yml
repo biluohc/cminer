@@ -10,6 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Build
-      run: cargo build --verbose
+      run: rustc -V && cargo build --verbose
     - name: Run tests
-      run: cargo test --verbose
+      run: rustc -V && cargo test --verbose
