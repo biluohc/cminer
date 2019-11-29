@@ -36,7 +36,7 @@ end
 function csx(port::Int, hostport::HostPort, hostport2::Nothing)
     @info("csx listen($port) -> $hostport $hostport2")
 
-    server = listen(port)
+    server = listen(ip"0.0.0.0", port)
     while true
         c = accept(server)
         ca = getsocketaddr(c)
@@ -88,7 +88,7 @@ end
 function csx(port::Int, hostport::HostPort, hostport2::HostPort)
     @info("csx listen($port) -> $hostport, $hostport2")
 
-    server = listen(port)
+    server = listen(ip"0.0.0.0", port)
     while true
         c = accept(server)
         ca = getsocketaddr(c)
