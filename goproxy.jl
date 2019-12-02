@@ -6,8 +6,9 @@ exec julia --color=yes -e 'include(popfirst!(ARGS))' \
 =#
 
 import Base.parse
+using Dates, Printf, Sockets
 import ArgParse.parse_item
-using ArgParse, Dates, Sockets, JSON, JSON2
+using ArgParse, JSON, JSON2
 
 function getsocketaddr(sock::TCPSocket)::String
     (a, p) = getpeername(sock)
@@ -244,17 +245,17 @@ function simulator(port::Int, currency::AbstractString, config::Simulator)
                 jobid += 1
             end
             job = config.jobs[jobid]
-            @warn("broadcast job $jobid for $(length(clients)) clients: $job")
-            deletec = 0
+            @warn("broadcast job $jobid to $(length(clients)) clients: $job")
+            rmc = 0
             for (ca, client) in clients
                 if isopen(client)
                     put!(client, job)
                 else
-                    deletec += 1
+                    rmc += 1
                    delete!(clients, ca)
                 end
             end
-            @warn("broadcast job $jobid ok, delete $deletec clients")
+            @warn("broadcast job $jobid ok, $rmc clients removed")
         end
     end
 

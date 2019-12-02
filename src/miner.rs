@@ -1,6 +1,6 @@
 use futures::{future, FutureExt, SinkExt, StreamExt};
 use tokio::{net::TcpStream, runtime::Builder, sync::mpsc, time::timeout};
-use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec, LinesCodecError};
+use tokio_util::codec::{Framed, LinesCodec, LinesCodecError};
 
 use std::{thread, time::Instant};
 
@@ -71,21 +71,19 @@ async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time
 where
     S: Handler<C>,
 {
-    let mut stream = timeout(timeoutv(), TcpStream::connect(&state.config().pool.sa)).await??;
+    let socket = timeout(timeoutv(), TcpStream::connect(&state.config().pool.sa)).await??;
 
     info!("#{} tcp connect to {} ok", count, state.config().pool);
 
     let codec = LinesCodec::new_with_max_length(1024);
-    let (r, w) = stream.split();
-
-    let mut miner_w = FramedWrite::new(w, codec.clone());
+    let (mut socket_w, socket_r) = Framed::new(socket, codec).split();
 
     // send login request
     let req = state.handle_request(state.login_request()).expect("handle_request(login_request)");
-    timeout(timeoutv(), miner_w.send(req)).await??;
+    timeout(timeoutv(), socket_w.send(req)).await??;
 
-    let miner_r = loop_handle_response(FramedRead::new(r, codec), state);
-    let miner_w = loop_handle_request(sc, miner_w, state, start_time);
+    let miner_r = loop_handle_response(socket_r, state);
+    let miner_w = loop_handle_request(sc, socket_w, state, start_time);
 
     match future::select(Box::pin(miner_w), Box::pin(miner_r)).await {
         future::Either::Left((l, _)) => info!("#{} select finish left(w): {:?}", count, l?),
@@ -95,12 +93,12 @@ where
     Ok(())
 }
 
-async fn loop_handle_response<C, S, R>(mut miner_r: R, state: &S) -> Result<()>
+async fn loop_handle_response<C, S, R>(mut socket_r: R, state: &S) -> Result<()>
 where
     S: Handler<C>,
     R: StreamExt<Item = std::result::Result<String, LinesCodecError>> + std::marker::Unpin,
 {
-    while let Some(msg) = miner_r.next().await {
+    while let Some(msg) = socket_r.next().await {
         let resp = match msg {
             Ok(req) => req,
             Err(e) => {
@@ -115,7 +113,7 @@ where
     Ok(())
 }
 
-async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut miner_w: W, state: &S, start_time: &Instant) -> Result<()>
+async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut socket_w: W, state: &S, start_time: &Instant) -> Result<()>
 where
     S: Handler<C>,
     W: SinkExt<String> + std::marker::Unpin,
@@ -134,7 +132,7 @@ where
             }
         };
         let req = state.handle_request(req)?;
-        let ok = timeout(timeoutv(), miner_w.send(req)).await?;
+        let ok = timeout(timeoutv(), socket_w.send(req)).await?;
         if ok.is_err() {
             return Err(DescError::from("miner_w.send(msg).timeout()").into());
         }
