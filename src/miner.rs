@@ -1,5 +1,12 @@
 use futures::{future, FutureExt, SinkExt, StreamExt};
-use tokio::{net::TcpStream, runtime::Builder, sync::mpsc, time::timeout};
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    net::TcpStream,
+    runtime::Builder,
+    sync::mpsc,
+    time::timeout,
+};
+use tokio_rustls::webpki::DNSNameRef;
 use tokio_util::codec::{Framed, LinesCodec, LinesCodecError};
 
 use std::{thread, time::Instant};
@@ -72,9 +79,24 @@ where
     S: Handler<C>,
 {
     let socket = timeout(timeoutv(), TcpStream::connect(&state.config().pool.sa)).await??;
-
     info!("#{} tcp connect to {} ok", count, state.config().pool);
 
+    if let Some((connector, domain)) = state.config().tls_config() {
+        let domain = DNSNameRef::try_from_ascii_str(&domain)?;
+        let socket = connector.connect(domain, socket).await?;
+        info!("#{} tls connect to {} ok", count, state.config().pool);
+
+        handle_socket(socket, state, sc, count, start_time).await
+    } else {
+        handle_socket(socket, state, sc, count, start_time).await
+    }
+}
+
+async fn handle_socket<A, C, S>(socket: A, state: &S, sc: &mut ReqReceiver, count: usize, start_time: &Instant) -> Result<()>
+where
+    A: AsyncRead + AsyncWrite,
+    S: Handler<C>,
+{
     let codec = LinesCodec::new_with_max_length(1024);
     let (mut socket_w, socket_r) = Framed::new(socket, codec).split();
 

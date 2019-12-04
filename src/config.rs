@@ -12,6 +12,7 @@ arg_enum! {
 use std::{
     fmt,
     net::{SocketAddr, ToSocketAddrs},
+    sync::Arc,
 };
 
 #[derive(Debug, Clone, StructOpt)]
@@ -51,6 +52,8 @@ pub struct Config {
     pub verbose: u8,
     #[structopt(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
     pub expire: u64,
+    #[structopt(short, long, help = "the domain for enable tls [An empty domain name means skipping the verify]")]
+    pub domain: Option<String>,
 }
 
 impl Config {
@@ -73,6 +76,7 @@ impl Config {
             workers,
             verbose,
             expire: 100,
+            domain: None,
             pool: pool.as_ref().parse().expect("resolve name failed"),
             currency: currency.as_ref().parse().unwrap_or(Currency::Eth),
             user: user.into(),
@@ -85,6 +89,36 @@ impl Config {
             self.workers = ws;
         }
         self
+    }
+    pub fn tls_config(&self) -> Option<(TlsConnector, String)> {
+        self.domain.clone().map(|mut d| {
+            let mut config = ClientConfig::new();
+
+            if d.is_empty() {
+                config.dangerous().set_certificate_verifier(Arc::new(NoCertificateVerification));
+                // "" will get InvalidDNSNameError
+                d = "localhost".to_owned();
+            } else {
+                config.root_store.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+            }
+            (TlsConnector::from(Arc::new(config)), d)
+        })
+    }
+}
+
+use tokio_rustls::{rustls, rustls::ClientConfig, webpki, TlsConnector};
+
+pub struct NoCertificateVerification;
+
+impl rustls::ServerCertVerifier for NoCertificateVerification {
+    fn verify_server_cert(
+        &self,
+        _roots: &rustls::RootCertStore,
+        _presented_certs: &[rustls::Certificate],
+        _dns_name: webpki::DNSNameRef<'_>,
+        _ocsp: &[u8],
+    ) -> Result<rustls::ServerCertVerified, rustls::TLSError> {
+        Ok(rustls::ServerCertVerified::assertion())
     }
 }
 
