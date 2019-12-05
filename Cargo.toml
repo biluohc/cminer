@@ -23,8 +23,8 @@ path = "src/tok-pc2-with-chan1.rs"
 
 [dependencies]
 futures = { version = "0.3.1", features = ["compat"] }
-tokio = { version = "0.2.2", features = ["full"] }
-tokio-util = { version = "0.2.0", features = ["codec"] }
+tokio = { version = "0.2.2", features = ["full"], git = "https://github.com/tokio-rs/tokio" }
+tokio-util = { version = "0.2.0", features = ["codec"], git = "https://github.com/tokio-rs/tokio" }
 
 futures1 = { package = "futures", version = "0.1" }
 tokio1 = { package = "tokio", version = "0.1" }
