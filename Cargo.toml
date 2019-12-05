@@ -1,0 +1,38 @@
+[package]
+name = "toktt"
+version = "0.1.0"
+authors = ["ysl <ysl@sparkpool.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "tok-pc1"
+path = "src/tok-pc1.rs"
+
+[[bin]]
+name = "tok-pc1-with-chan2"
+path = "src/tok-pc1-with-chan2.rs"
+
+[[bin]]
+name = "tok-pc2"
+path = "src/tok-pc2.rs"
+
+[[bin]]
+name = "tok-pc2-with-chan1"
+path = "src/tok-pc2-with-chan1.rs"
+
+[dependencies]
+futures = { version = "0.3.1", features = ["compat"] }
+tokio = { version = "0.2.2", features = ["full"] }
+tokio-util = { version = "0.2.0", features = ["codec"] }
+
+futures1 = { package = "futures", version = "0.1" }
+tokio1 = { package = "tokio", version = "0.1" }
+
+nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
+thiserror = "1.0.5"
+anyhow = "1.0.19"
+parking_lot = "0.10.0"
+crossbeam = "0.7"
+num_cpus = "1.11.1"
+net2 = "0.2.33"
