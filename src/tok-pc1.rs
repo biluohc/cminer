@@ -38,7 +38,7 @@ fn fun() {
                     handle_chan(ch, idx, results2.clone());
                     Ok(())
                 })
-                .then(|rest| Ok::<(), ()>(fatal!("unexpected tok finish: {:?}", rest)));
+                .then(|rest| Ok::<(), ()>(info!("tok finish: {:?}", rest)));
 
             runtime.block_on(server).unwrap();
 
