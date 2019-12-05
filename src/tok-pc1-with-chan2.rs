@@ -36,6 +36,7 @@ fn fun() {
                 .and_then(|x| x)
                 .for_each(move |(ch, idx)| {
                     handle_chan(ch, idx, results2.clone());
+                    AC_CHAN.fetch_add(1, Ordering::SeqCst);
                     Ok(())
                 })
                 .then(|rest| Ok::<(), ()>(info!("tok finish: {:?}", rest)));
