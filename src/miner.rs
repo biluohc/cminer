@@ -83,7 +83,7 @@ where
 
     if let Some((connector, domain)) = state.config().tls_config() {
         let domain = DNSNameRef::try_from_ascii_str(&domain)?;
-        let socket = connector.connect(domain, socket).await?;
+        let socket = timeout(timeoutv(), connector.connect(domain, socket)).await??;
         info!("#{} tls connect to {} ok", count, state.config().pool);
 
         handle_socket(socket, state, sc, count, start_time).await
