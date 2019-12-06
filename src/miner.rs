@@ -138,7 +138,7 @@ where
 async fn loop_handle_request<C, S, W>(sc: &mut ReqReceiver, mut socket_w: W, state: &S, start_time: &Instant) -> Result<()>
 where
     S: Handler<C>,
-    W: SinkExt<String> + std::marker::Unpin,
+    W: SinkExt<String, Error = LinesCodecError> + std::marker::Unpin,
 {
     while let Some(msg) = sc.recv().await {
         let req = match msg {
