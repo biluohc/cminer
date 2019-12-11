@@ -38,10 +38,10 @@ pub fn clean_0x(s: &str) -> &str {
     }
 }
 
-use bigint::{H256, U256};
+use bigint::{BigEndianHash, H256, U256};
 
 pub fn target_to_difficulty(target: &H256) -> U256 {
-    let d = U256::from(target);
+    let d = target.into_uint();
     if d <= U256::one() {
         U256::max_value()
     } else {
@@ -49,13 +49,13 @@ pub fn target_to_difficulty(target: &H256) -> U256 {
     }
 }
 
-/// Convert an Ethash difficulty to the target. Basically just `f(x) = 2^256 / x`.
+// Convert an Ethash difficulty to the target. Basically just `f(x) = 2^256 / x`.
 pub fn difficulty_to_target(difficulty: &U256) -> H256 {
-    if *difficulty <= U256::one() {
-        U256::max_value().into()
+    H256::from_uint(&if *difficulty <= U256::one() {
+        U256::max_value()
     } else {
-        (((U256::one() << 255) / *difficulty) << 1).into()
-    }
+        (((U256::one() << 255) / *difficulty) << 1)
+    })
 }
 
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

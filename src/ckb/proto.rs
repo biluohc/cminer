@@ -32,7 +32,7 @@ pub fn parse_job(form: FormJob) -> Result<Job, &'static str> {
         powhash: form.1.clone(),
         height: form.2,
         nonce1_bytes: 0,
-        target: 0.into(),
+        target: Default::default(),
         nonce: 0,
         id: 0,
     })

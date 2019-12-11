@@ -1,4 +1,4 @@
-use bigint::{H256, H64};
+use bigint::{BigEndianHash, H256, H64, U64};
 use bytesize::ByteSize;
 use rayon::current_num_threads;
 use std::sync::Arc;
@@ -15,11 +15,11 @@ pub fn fun() {
     let computer = Computer::new(job.epoch, 1);
 
     let now = std::time::Instant::now();
-    let mut nonce = 0;
+    let mut nonce = 0.into();
     loop {
-        nonce += 1;
+        nonce = nonce + 1;
 
-        let solution = computer.compute_raw(&job, nonce);
+        let solution = computer.compute_raw(&job, &nonce);
 
         info!(
             "ph: {}, nonce: {}, diff: {}, result: {}, mix: {}",
@@ -30,7 +30,7 @@ pub fn fun() {
             solution.mixed_hash
         );
 
-        if nonce == 1_000_000 {
+        if nonce == 1_000_000.into() {
             break;
         }
     }
@@ -128,7 +128,7 @@ impl Computer {
     pub fn size(&self) -> usize {
         self.full.size()
     }
-    pub fn compute(&self, job: &Job, nonce: u64) -> Option<Solution> {
+    pub fn compute(&self, job: &Job, nonce: &U64) -> Option<Solution> {
         let mut solution = self.compute_raw(job, nonce);
 
         // info!("nonce: {}, diff: {}", nonce, target_to_difficulty(&solution.target));
@@ -139,10 +139,11 @@ impl Computer {
             None
         }
     }
-    pub fn compute_raw(&self, job: &Job, nonce: u64) -> Solution {
+    pub fn compute_raw(&self, job: &Job, nonce: &U64) -> Solution {
         let full = self.full.as_bytes();
+        let nonce = H64::from_uint(nonce);
 
-        let (mixed_hash, result) = ethash::hashimoto_full(job.powhash, H64::from(nonce), full.len(), full);
+        let (mixed_hash, result) = ethash::hashimoto_full(job.powhash, nonce, full.len(), full);
 
         Solution {
             id: job.id,

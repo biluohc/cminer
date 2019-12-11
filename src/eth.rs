@@ -121,7 +121,7 @@ impl Handle for State<EthJob> {
 impl Run for Worker<EthJob> {
     fn run(&mut self) {
         let mut job_idx = 0;
-        let mut nonce = 0;
+        let mut nonce = 0.into();
         let mut compute = None;
 
         loop {
@@ -147,12 +147,12 @@ impl Run for Worker<EthJob> {
             }
 
             if let Some((c, j)) = compute.as_ref() {
-                if let Some(s) = c.compute(j, nonce) {
+                if let Some(s) = c.compute(j, &nonce) {
                     warn!("found a solution: id: {}, nonce: {:0x}, powhash: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(Ok(req)).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                 }
                 self.hashrate.add(1);
-                nonce += self.step;
+                nonce = nonce + self.step;
             } else {
                 trace!("miner {} will sleep {} secs", self.idx, TIMEOUT_SECS);
                 util::sleep_secs(TIMEOUT_SECS);
