@@ -294,7 +294,7 @@ end
 function parse_args(args::Vector{String})
     as = ArgParseSettings()
 
-    @add_arg_table as begin
+    @add_arg_table! as begin
         "--port", "-p"
             help = "the port of serve"
             arg_type = Int
