@@ -34,6 +34,7 @@ function ArgParse.parse_item(::Type{HostPort}, x::AbstractString)
     return parse(HostPort, x)
 end
 
+# ./goproxy.jl -p 2510 0.0.0.0:5610
 function csx(port::Int, hostport::HostPort, hostport2::Nothing)
     @info("csx listen($port) -> $hostport $hostport2")
 
@@ -86,6 +87,7 @@ function csx(port::Int, hostport::HostPort, hostport2::Nothing)
     end
 end
 
+# ./goproxy.jl -p 2510 0.0.0.0:5610 0.0.0.0:5619
 function csx(port::Int, hostport::HostPort, hostport2::HostPort)
     @info("csx listen($port) -> $hostport, $hostport2")
 
@@ -218,6 +220,35 @@ function ckb_handler(job::AbstractString, req::AbstractString)::String
     """{"id":$(JSON.json(id)),"jsonrpc":"2.0","result":false, "error": "invalid request"}"""
 end
 
+function btc_handler(job::AbstractString, req::AbstractString)::String
+    id = nothing
+    try
+        json = JSON.parse(req)
+        id = json["id"]
+        method = json["method"]
+
+        if method == "mining.submit"
+            return """{"id":$id,"jsonrpc":"2.0","result":true}"""
+        end
+        
+        if method == "mining.subscribe"
+            nonce1 = @sprintf("%08x", rand(UInt32))
+            return """{"id":$id,"result":[[["mining.notify","$nonce1"]],"$nonce1",8],"error":null}"""
+        end
+
+        if method == "mining.authorize"
+            return """{"id":$id,"jsonrpc":"2.0","result":true}
+            {"id":null,"method":"mining.set_difficulty","params":[1]}
+            $job"""
+        end
+    catch e
+        @error("handle req: $req error: $e")
+    end
+
+    """{"id":$(JSON.json(id)),"jsonrpc":"2.0","result":false, "error": "invalid request"}"""
+end
+
+# ./goproxy.jl -p 2510 0.0.0.0:5610 -c btc/ckb/eth
 function simulator(port::Int, currency::AbstractString, config::Simulator)
     @info("simulator listen($port) for $currency")
 
@@ -226,11 +257,13 @@ function simulator(port::Int, currency::AbstractString, config::Simulator)
         handler = eth_handler
     elseif is_currency(r"ckb.*")
         handler = ckb_handler
+    elseif is_currency(r"btc.*")
+        handler = btc_handler
     else
         error("invalid currency $currency not find handler")
     end
 
-    server = listen(port)
+    server = listen(ip"0.0.0.0", port)
 
     clients = Dict{String, Channel}()
     job = config.jobs[1]
