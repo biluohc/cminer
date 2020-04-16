@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "cminer"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "anyhow 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.23.0 (registry+https://github.com/rust-lang/crates.io-index)",

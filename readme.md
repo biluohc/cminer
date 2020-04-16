@@ -1,4 +1,4 @@
-# A cpuminer impl by Rust, supported currency(CKB, ETH, ETC..)
+# A cpuminer impl by Rust, supported currency(CKB, BTC, ETH, ETC..)
 
 ## install 
 
