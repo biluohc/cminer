@@ -54,7 +54,7 @@ pub fn difficulty_to_target(difficulty: &U256) -> H256 {
     H256::from_uint(&if *difficulty <= U256::one() {
         U256::max_value()
     } else {
-        (((U256::one() << 255) / *difficulty) << 1)
+        ((U256::one() << 255) / *difficulty) << 1
     })
 }
 

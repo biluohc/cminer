@@ -22,7 +22,7 @@ where
     C: Default,
     State<C>: Handler<C>,
 {
-    let (mp, mut sc) = mpsc::channel(32);
+    let (mp, mut sc) = mpsc::channel(512);
     let state: State<C> = State::new(config, mp);
 
     let state_clone = state.clone();

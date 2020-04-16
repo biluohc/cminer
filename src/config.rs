@@ -4,8 +4,9 @@ use nonblock_logger::log::LevelFilter::{self, *};
 arg_enum! {
     #[derive(Debug, Clone, Copy)]
     pub enum Currency {
-        Eth,
+        Btc,
         Ckb,
+        Eth,
     }
 }
 

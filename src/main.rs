@@ -3,6 +3,8 @@ extern crate serde;
 #[macro_use]
 extern crate structopt;
 #[macro_use]
+extern crate anyhow;
+#[macro_use]
 extern crate thiserror;
 #[macro_use]
 pub extern crate nonblock_logger;
@@ -38,20 +40,22 @@ fn main() {
     fun(config)
 }
 
-pub mod ckb;
 pub mod config;
-pub mod eth;
 pub mod miner;
 pub mod reqs;
 pub mod state;
 pub mod util;
 
-use crate::ckb::CkbJob;
+pub mod btc;
+pub mod ckb;
+pub mod eth;
+
 use crate::config::{Config, Currency::*};
-use crate::eth::EthJob;
+use crate::{btc::BtcJob, ckb::CkbJob, eth::EthJob};
 
 fn fun(config: Config) {
     match config.currency {
+        Btc => miner::fun::<BtcJob>(config),
         Ckb => miner::fun::<CkbJob>(config),
         Eth => miner::fun::<EthJob>(config),
     }
