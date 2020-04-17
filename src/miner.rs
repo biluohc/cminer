@@ -97,7 +97,7 @@ where
     A: AsyncRead + AsyncWrite,
     S: Handler<C>,
 {
-    let codec = LinesCodec::new_with_max_length(1024);
+    let codec = LinesCodec::new_with_max_length(81920);
     let (mut socket_w, socket_r) = Framed::new(socket, codec).split();
 
     // send login request
