@@ -182,7 +182,7 @@ impl Computer {
         let mut encoder = std::io::Cursor::new(vec![]);
         header.consensus_encode(&mut encoder).unwrap();
         let header_bytes = encoder.into_inner();
-        self.bytes.clone_from_slice(header_bytes.as_slice());
+        self.bytes.copy_from_slice(header_bytes.as_slice());
     }
 
     #[inline]
@@ -192,6 +192,7 @@ impl Computer {
 
         let bytes = &mut self.bytes;
         (&mut bytes[76..]).write_all(&nonce.to_le_bytes()).unwrap();
+
         let hash = BlockHash::hash(&bytes[..]);
         let hashraw = hash.into_inner();
 
@@ -203,17 +204,15 @@ impl Computer {
         None
     }
 
-    // ring is faster
+    // openssl is faster
     #[inline]
     pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
-        use ring::digest;
-        use std::io::Write;
+        use openssl::sha::sha256;
 
         let bytes = &mut self.bytes;
-        (&mut bytes[76..]).write_all(&nonce.to_le_bytes()).unwrap();
+        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
 
-        let hash = digest::digest(&digest::SHA256, digest::digest(&digest::SHA256, bytes).as_ref());
-        let hashraw: &HashRaw = TryInto::try_into(hash.as_ref()).unwrap();
+        let hashraw = sha256(sha256(bytes).as_ref());
 
         let target = target_uint256_from_hashraw(&hashraw);
         if target <= job.target {

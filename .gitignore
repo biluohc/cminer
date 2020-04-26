@@ -1,6 +1,10 @@
 /target
 **/*.rs.bk
+**/*.DS_Store
 
 goproxy
 *.go*
 eaglesong
+wgpu-rs
+wk
+
