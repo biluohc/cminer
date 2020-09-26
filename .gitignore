@@ -8,3 +8,6 @@ eaglesong
 wgpu-rs
 wk
 
+keep-core 
+keep-ecdsa
+keepstats
