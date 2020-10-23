@@ -27,7 +27,7 @@ where
 
     let state_clone = state.clone();
     let _client = thread::Builder::new()
-        .name("toko".into())
+        .name("net".into())
         .spawn(move || {
             let mut runtime = Builder::new().enable_all().basic_scheduler().build().expect("client Runtime new failed");
 

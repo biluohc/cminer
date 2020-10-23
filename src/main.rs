@@ -9,16 +9,34 @@ extern crate thiserror;
 #[macro_use]
 pub extern crate nonblock_logger;
 
-use nonblock_logger::{log::LevelFilter, BaseFilter, BaseFormater, NonblockLogger};
+use nonblock_logger::{
+    chrono::Local,
+    log::{LevelFilter, Record},
+    BaseFilter, BaseFormater, FixedLevel, NonblockLogger,
+};
 use structopt::StructOpt;
 
+pub fn format(base: &BaseFormater, record: &Record) -> String {
+    let level = FixedLevel::with_color(record.level(), base.color_get()).length(base.level_get()).into_colored().into_coloredfg();
+
+    format!(
+        "[{} {}#{}:{} {}] {}\n",
+        Local::now().format("%Y-%m-%d %H:%M:%S.%3f"),
+        level,
+        record.module_path().unwrap_or("*"),
+        // record.file().unwrap_or("*"),
+        record.line().unwrap_or(0),
+        nonblock_logger::current_thread_name(),
+        record.args()
+    )
+}
 fn main() {
     let config = Config::from_args().fix_workers();
     let pkg = env!("CARGO_PKG_NAME");
     let log = config.log();
     println!("{}: {:?}, {:?}", pkg, log, config);
 
-    let formater = BaseFormater::new().local(true).color(true).level(4);
+    let formater = BaseFormater::new().local(true).color(true).level(4).formater(format);
     let filter = BaseFilter::new()
         .max_level(log)
         .starts_with(true)
