@@ -29,7 +29,7 @@ where
     let _client = thread::Builder::new()
         .name("net".into())
         .spawn(move || {
-            let mut runtime = Builder::new().enable_all().basic_scheduler().build().expect("client Runtime new failed");
+            let runtime = Builder::new_current_thread().enable_all().build().expect("client Runtime new failed");
 
             let mut count = 0;
             loop {

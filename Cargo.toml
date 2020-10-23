@@ -41,7 +41,7 @@ rand = "0.7.2"
 sha3 = "0.8"
 
 futures = "0.3.2"
-tokio = { version = "0.2.2", features = ["rt-core", "tcp", "sync", "time"] }
-tokio-util = { version = "0.3.1", features = ["codec"] }
-tokio-rustls = { version = "0.13", features = ["dangerous_configuration"] }
-webpki-roots = "0.19.0"
+tokio = { version = "0.3.1", features = ["rt", "net", "sync", "time"] }
+tokio-util = { version = "0.4.0", features = ["codec"] }
+tokio-rustls = { version = "0.20", features = ["dangerous_configuration"] }
+webpki-roots = "0.20.0"

@@ -14,7 +14,6 @@ use nonblock_logger::{
     log::{LevelFilter, Record},
     BaseFilter, BaseFormater, FixedLevel, NonblockLogger,
 };
-use structopt::StructOpt;
 
 pub fn format(base: &BaseFormater, record: &Record) -> String {
     let level = FixedLevel::with_color(record.level(), base.color_get()).length(base.level_get()).into_colored().into_coloredfg();
@@ -30,7 +29,10 @@ pub fn format(base: &BaseFormater, record: &Record) -> String {
         record.args()
     )
 }
+
 fn main() {
+    use structopt::StructOpt;
+
     let config = Config::from_args().fix_workers();
     let pkg = env!("CARGO_PKG_NAME");
     let log = config.log();
