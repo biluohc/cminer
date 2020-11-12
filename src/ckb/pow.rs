@@ -20,6 +20,8 @@ impl Default for Computer {
     }
 }
 
+// ckb testnet use eaglesong_blake2b
+// https://github.com/nervosnetwork/ckb/blob/v0.37.0/pow/src/lib.rs#L21
 impl Computer {
     pub fn new() -> Self {
         Self { cache: [0u8; 48] }
@@ -37,6 +39,7 @@ impl Computer {
 
         let mut hash: Hash = [0u8; 32];
         eaglesong(&self.cache[..], &mut hash[..]);
+        let hash =  ckb_hash::blake2b_256(&hash);
 
         Solution { id: 0, nonce, target: hash.into() }
     }
