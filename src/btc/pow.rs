@@ -60,11 +60,12 @@ pub fn coinbase_for_block(coinbase1: &[u8], coinbase2: &[u8], extra_nonce1: &[u8
     Ok(coinbase_tx)
 }
 
+// d: HashRaw
 #[inline]
-pub fn target_uint256_from_hashraw(d: &HashRaw) -> Uint256 {
+pub fn target_uint256_from_hashraw<D: AsRef<[u8]>>(d: D) -> Uint256 {
     let mut out = Uint256([0u64; 4]);
 
-    for (i, dd) in (&d[..]).chunks(8).enumerate() {
+    for (i, dd) in d.as_ref().chunks(8).enumerate() {
         out.0[i] = u64::from_le_bytes(dd.try_into().unwrap())
     }
 
@@ -72,8 +73,8 @@ pub fn target_uint256_from_hashraw(d: &HashRaw) -> Uint256 {
 }
 
 #[inline]
-pub fn target_uint256_from_hashraw_origin(d: &HashRaw) -> Uint256 {
-    Decodable::consensus_decode(&d[..]).unwrap()
+pub fn target_uint256_from_hashraw_origin<D: AsRef<[u8]>>(d: D) -> Uint256 {
+    Decodable::consensus_decode(d.as_ref()).unwrap()
 }
 
 // cargo tr btc_tar -- --nocapture
@@ -83,7 +84,7 @@ fn btc_target() {
     let times = 10000_0000;
 
     for _ in 0..times {
-        let d = rand::random();
+        let d = rand::random::<[u8; 32]>();
 
         let origin = target_uint256_from_hashraw_origin(&d);
         let raw = target_uint256_from_hashraw(&d);
@@ -102,7 +103,7 @@ fn btc_target() {
     }
 
     bench("raw_", times, |_| {
-        let a = rand::random();
+        let a = rand::random::<[u8; 32]>();
         let d = target_uint256_from_hashraw(&a);
         if b {
             println!("{}: {:?}", d, a);
@@ -110,7 +111,7 @@ fn btc_target() {
     });
 
     bench("orig", times, |_| {
-        let a = rand::random();
+        let a = rand::random::<[u8; 32]>();
         let d = target_uint256_from_hashraw_origin(&a);
         if b {
             println!("{}: {:?}", d, a);
@@ -119,7 +120,7 @@ fn btc_target() {
 
     let unit = unit_target();
     bench("raw_cmp_skip", times, |_| {
-        let a = rand::random();
+        let a = rand::random::<[u8; 32]>();
         let d = target_uint256_from_hashraw(&a);
 
         // small pool diff 1 = 2^(8*4) > 4.2 G
@@ -129,7 +130,7 @@ fn btc_target() {
     });
 
     bench("raw_cmp_dire", times, |_| {
-        let a = rand::random();
+        let a = rand::random::<[u8; 32]>();
         let d = target_uint256_from_hashraw(&a);
         if d <= unit && b {
             println!("{}: {:?}", d, a);
@@ -187,8 +188,9 @@ impl Computer {
         self.bytes.copy_from_slice(header_bytes.as_slice());
     }
 
+    #[cfg(any(feature = "btc-bitcoinrs"))]
     #[inline]
-    pub fn compute_origin(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
+    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
         use bitcoin::hash_types::BlockHash;
         use std::io::Write;
 
@@ -198,7 +200,7 @@ impl Computer {
         let hash = BlockHash::hash(&bytes[..]);
         let hashraw = hash.into_inner();
 
-        let target = target_uint256_from_hashraw(&hashraw);
+        let target = target_uint256_from_hashraw(hashraw);
         if target <= job.target {
             return Some(Solution { target, nonce, id: atomic_id() });
         }
@@ -206,7 +208,7 @@ impl Computer {
         None
     }
 
-    // openssl is faster
+    #[cfg(any(feature = "btc-openssl"))]
     #[inline]
     pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
         use openssl::sha::sha256;
@@ -216,7 +218,47 @@ impl Computer {
 
         let hashraw = sha256(sha256(bytes).as_ref());
 
-        let target = target_uint256_from_hashraw(&hashraw);
+        let target = target_uint256_from_hashraw(hashraw);
+        if target <= job.target {
+            return Some(Solution { target, nonce, id: atomic_id() });
+        }
+
+        None
+    }
+
+    #[cfg(any(feature = "btc-sha2"))]
+    #[inline]
+    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
+        use sha2::{Digest, Sha256};
+
+        let bytes = &mut self.bytes;
+        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
+
+        let mut hasher = Sha256::new();
+        hasher.update(bytes);
+        let out = hasher.finalize_reset();
+        hasher.update(out);
+        let hashraw = hasher.finalize();
+
+        let target = target_uint256_from_hashraw(hashraw);
+        if target <= job.target {
+            return Some(Solution { target, nonce, id: atomic_id() });
+        }
+
+        None
+    }
+
+    #[cfg(any(feature = "btc-ring"))]
+    #[inline]
+    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
+        use ring::digest;
+
+        let bytes = &mut self.bytes;
+        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
+
+        let hashraw = digest::digest(&digest::SHA256, digest::digest(&digest::SHA256, bytes).as_ref());
+
+        let target = target_uint256_from_hashraw(hashraw);
         if target <= job.target {
             return Some(Solution { target, nonce, id: atomic_id() });
         }
