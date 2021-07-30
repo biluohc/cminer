@@ -6,7 +6,7 @@ use bitcoin::TxMerkleNode;
 use bitcoin_hashes::sha256d;
 use bitcoin_hashes::sha256d::Hash;
 use bitcoin_hashes::Hash as HashTrait;
-use bytes::buf::ext::BufExt;
+use bytes::Buf;
 use hex::decode;
 
 use std::collections::VecDeque;

@@ -45,6 +45,8 @@ pub struct Config {
     #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
     pub currency: Currency,
+    #[structopt(short, long, help = "enable testnet(current work for ckb only)")]
+    pub testnet: bool,
     #[structopt(short, long, default_value = "sp_yos", help = "User")]
     pub user: String,
     #[structopt(short, long, default_value = "0v0", help = "Name")]
@@ -66,7 +68,7 @@ impl Config {
             _ => Trace,
         }
     }
-    pub fn new<C, P, U, W>(currency: C, pool: P, workers: usize, user: U, worker: W, verbose: u8) -> Self
+    pub fn new2<C, P, U, W>(currency: C, testnet: bool, pool: P, workers: usize, user: U, worker: W, verbose: u8) -> Self
     where
         C: AsRef<str>,
         P: AsRef<str>,
@@ -74,6 +76,7 @@ impl Config {
         W: Into<String>,
     {
         Self {
+            testnet,
             workers,
             verbose,
             expire: 100,

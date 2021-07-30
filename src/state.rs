@@ -55,6 +55,7 @@ pub trait Job: Clone + Default + std::fmt::Debug + Send + 'static {
 
 #[derive(Debug)]
 pub struct Worker<C> {
+    pub testnet: bool,
     pub job: State<C>,
     pub jobsc: Counter,
     pub hashrate: Counter,
@@ -172,6 +173,7 @@ where
             lock.hashrates.push(hashrate.clone());
 
             let mut worker = Worker {
+                testnet: self.config().testnet,
                 job: (*self).clone(),
                 jobsc: lock.jobsc.clone(),
                 sender: self.sender().clone(),

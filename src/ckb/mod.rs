@@ -162,7 +162,7 @@ impl Run for Worker<CkbJob> {
         let mut job_idx = 0;
         let mut job = None;
         let mut nonce = 0u128;
-        let mut computer = Computer::new();
+        let mut computer = Computer::new(self.testnet);
 
         loop {
             let job_idx2 = self.jobsc.get();

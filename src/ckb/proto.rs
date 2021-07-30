@@ -84,7 +84,7 @@ pub const METHOD_SUBMIT_WORK: &str = "mining.submit";
 pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
     let nonce_bytes = solution.nonce.to_be_bytes();
     let nonce_bytes_submit = &nonce_bytes[job.nonce1_bytes..];
-    let nonce_submit = hex_string(nonce_bytes_submit).map_err(|e| error!("hex_string(nonce_bytes_submit) error: {:?}", e)).ok()?;
+    let nonce_submit = hex_string(nonce_bytes_submit);
 
     let req = format!(r#"{{"id":{},"method":"{}","params":["{}","{}","{}"]}}"#, solution.id, METHOD_SUBMIT_WORK, "", job.jobid, nonce_submit);
     Some((solution.id, METHOD_SUBMIT_WORK, req).into())

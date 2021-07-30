@@ -12,19 +12,14 @@ pub type Hash = [u8; 32];
 #[derive(Clone)]
 pub struct Computer {
     cache: Cache,
-}
-
-impl Default for Computer {
-    fn default() -> Self {
-        Self::new()
-    }
+    testnet: bool,
 }
 
 // ckb testnet use eaglesong_blake2b
 // https://github.com/nervosnetwork/ckb/blob/v0.37.0/pow/src/lib.rs#L21
 impl Computer {
-    pub fn new() -> Self {
-        Self { cache: [0u8; 48] }
+    pub fn new(testnet: bool) -> Self {
+        Self { cache: [0u8; 48], testnet }
     }
     pub fn update(&mut self, powhash: &str) {
         hex_decode(powhash.as_bytes(), &mut self.cache[0..32]).expect("Computer.update");
@@ -39,7 +34,10 @@ impl Computer {
 
         let mut hash: Hash = [0u8; 32];
         eaglesong(&self.cache[..], &mut hash[..]);
-        let hash =  ckb_hash::blake2b_256(&hash);
+
+        if self.testnet {
+            hash = ckb_hash::blake2b_256(&hash);
+        }
 
         Solution { id: 0, nonce, target: hash.into() }
     }

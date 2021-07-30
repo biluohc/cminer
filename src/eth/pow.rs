@@ -44,8 +44,8 @@ pub fn get_epoch_number(seed_hash: &H256) -> Result<usize, ()> {
     let mut seed = [0u8; 32];
     while seed != seed_hash[..] {
         let mut hasher = Keccak256::default();
-        hasher.input(&seed);
-        let output = hasher.result();
+        hasher.update(&seed);
+        let output = hasher.finalize();
         for i in 0..32 {
             seed[i] = output[i];
         }

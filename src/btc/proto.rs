@@ -51,7 +51,7 @@ pub fn parse_job(form: FormJob) -> Result<Job, crate::util::Error> {
 
     let mut bytes = [0u8; 4];
     hex_decode(version.as_bytes(), &mut bytes)?;
-    let version = u32::from_be_bytes(bytes);
+    let version = i32::from_be_bytes(bytes);
     hex_decode(nbits.as_bytes(), &mut bytes)?;
     let nbits = u32::from_be_bytes(bytes);
     hex_decode(ntime.as_bytes(), &mut bytes)?;
@@ -111,7 +111,7 @@ pub struct Job {
     pub nonce2_bytes: usize,
     pub nbits: u32,
     pub ntime: u32,
-    pub version: u32,
+    pub version: i32,
     pub coinbase_part1: Vec<u8>,
     pub coinbase_part2: Vec<u8>,
     pub merkle_branches: VecDeque<HashRaw>,
@@ -144,13 +144,13 @@ pub const METHOD_SUBMIT_WORK: &str = "mining.submit";
 // {"id":8,"result":true,"error":null}
 pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
     let nonce2 = job.nonce2_bytes();
-    let nonce2_submit = hex_string(nonce2.as_slice()).map_err(|e| error!("hex_string(nonce2_submit) error: {:?}", e)).ok()?;
+    let nonce2_submit = hex_string(nonce2.as_slice());
 
     let ntime = job.ntime.to_be_bytes();
-    let ntime_submit = hex_string(ntime.as_ref()).map_err(|e| error!("hex_string(ntime_submit) error: {:?}", e)).ok()?;
+    let ntime_submit = hex_string(ntime.as_ref());
 
     let nonce = solution.nonce.to_be_bytes();
-    let nonce_submit = hex_string(nonce.as_ref()).map_err(|e| error!("hex_string(nonce_submit) error: {:?}", e)).ok()?;
+    let nonce_submit = hex_string(nonce.as_ref());
 
     let req = format!(
         r#"{{"id":{},"method":"{}","params":["{}", "{}", "{}", "{}", "{}"]}}"#,
