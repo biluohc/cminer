@@ -51,9 +51,11 @@ pub fn coinbase_for_block(coinbase1: &[u8], coinbase2: &[u8], extra_nonce1: &[u8
     let r = std::io::Cursor::new(coinbase).reader();
     let mut coinbase_tx: Transaction = Decodable::consensus_decode(r)?;
 
-    // add witness
-    let i = &mut coinbase_tx.input[0];
-    i.witness = vec![vec![0u8; 32]];
+    // add witness for version2's tx
+    if coinbase_tx.version > 1 {
+        let i = &mut coinbase_tx.input[0];
+        i.witness = vec![vec![0u8; 32]];
+    }
 
     Ok(coinbase_tx)
 }
