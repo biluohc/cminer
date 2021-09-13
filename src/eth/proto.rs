@@ -5,16 +5,24 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 pub struct FormJob {
     pub id: usize,
-    pub jsonrpc: String,
-    pub result: (String, String, String),
+    pub jsonrpc: Option<String>,
+    pub result: Vec<String>,
 }
 
 impl FormJob {
     pub fn to_job(&self) -> Result<Job, &'static str> {
-        let seedhash = clean_0x(&self.result.1).parse().map_err(|_| "get seedhash error")?;
+        if self.result.len() < 3 {
+            return Err("invalid job params");
+        }
+        let seedhash = clean_0x(&self.result[1]).parse().map_err(|_| "get seedhash error")?;
+        let mut target = clean_0x(&self.result[2]).to_owned();
+        if target.len() < 64 {
+            target = "0".repeat(64 - target.len()) + &target;
+        }
+
         Ok(Job {
-            powhash: clean_0x(&self.result.0).parse().map_err(|_| "get powhash error")?,
-            target: clean_0x(&self.result.2).parse().map_err(|_| "get target error")?,
+            powhash: clean_0x(&self.result[0]).parse().map_err(|_| "get powhash error")?,
+            target: target.parse().map_err(|_| "get target error")?,
             epoch: get_epoch_number(&seedhash).map_err(|()| "get epoch error")?,
             nonce: rand::random::<u64>().into(),
             id: 0,
