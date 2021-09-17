@@ -94,10 +94,10 @@ fn test_nonce_format() {
     }
 }
 
-// '{"jsonrpc":"2.0", "method":"eth_submitHashrate", "params":["0x0000000000000000000000000000000000000000000000000000000000500000", "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"],"id":73}'
+// '{"jsonrpc":"2.0", "method":"eth_submitHashrate", "params":["0xc76cc9", "0x59daa26581d0acd1fce254fb7e85952f4c09d0915afd33d3886cd914bc7d283c"],"id":73}'
 pub fn make_hashrate(hashrate: u64) -> Req {
     let req = format!(
-        r#"{{"jsonrpc":"2.0", "method":"eth_submitHashrate", "params":["{:#066x}", "0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}}"#,
+        r#"{{"jsonrpc":"2.0", "method":"eth_submitHashrate", "params":["{:#0x}", "0x0000000000000000000000000000000000000000000000000000000000000000"],"id":1}}"#,
         hashrate
     );
     (1, METHOD_SUBMIT_HASHRATE, req).into()
@@ -105,14 +105,12 @@ pub fn make_hashrate(hashrate: u64) -> Req {
 
 #[test]
 fn test_hashrate_generate() {
-    use bigint::{BigEndianHash, U256};
-
     for _ in 0..100 {
         let hashrate = rand::random::<u64>();
-        let str = format!("{:#066x}", hashrate);
+        let str = format!("{:#0x}", hashrate);
 
-        let hashrateh = H256::from_uint(&U256::from(hashrate));
-        let str2 = format!("{:?}", hashrateh);
+        let hashrateh = U256::from(hashrate);
+        let str2 = format!("{:#0x}", hashrateh);
 
         assert_eq!(str, str2);
     }
