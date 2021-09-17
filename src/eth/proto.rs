@@ -1,3 +1,4 @@
+use bigint::{BigEndianHash, U256};
 use serde_json::Value;
 
 // {"id":0,"jsonrpc":"2.0","result":["0x6c9e0bfc36b543a626c0d161d263a24df21c97956e665f87389dcc5cd908fedc","0x1a7d0730fc4d6e634f5506e6530175aaea40fddd86fa7d41af81ef34f7293b09","0x000001ad7f29abcaf485787a6520ec08d23699194119a5c37387b71906614310"]}
@@ -14,15 +15,52 @@ impl FormJob {
         if self.result.len() < 3 {
             return Err("invalid job params");
         }
-        let seedhash = clean_0x(&self.result[1]).parse().map_err(|_| "get seedhash error")?;
+
+        /*
+        compact job from nbminer:
+        // login
+        {"id":1,"method":"eth_submitLogin","params":["0x20451FaA06746924cdd52545E41d5e628a741a94.www"],"worker":"www","compact":true}
+        {"compact":true,"id":1,"jsonrpc":"2.0","result":true}
+        // job compact
+        job-11039957: {"id":0,"jsonrpc":"2.0","result":["0xced1350ae4777ce9ac5c716d714d356b21af06db1dc1a71462df1bf7d02d35ac","0x27027a96b05f67c6d9c9cc8bdf9ecbfedcf3147cecde33fed92d756a79bc8a25","0x0000002af31dc4611873bf3f70834acdae9f0f4f534f5d60585a5f1c1a3ced1b"]}
+        jobc-11039957: {"id":0,"jsonrpc":"2.0","result":["ztE1CuR3fOmsXHFtcU01ayGvBtsdwacUYt8b99AtNaw=","182af31d","a874d5"]}
+        powhash => base64,
+        target(fixed) => nbits: [__, zeros, base] = target.match(/^0x(?<exp>0+)(?<bits>[\dabcdef]+)$/i); exp = zeros.length * 4; nbits = exp.toString(16) + base.slice(0, 6)
+        seedhash => height
+        */
+        if self.result[0].len() < 66 {
+            let powhash = base64::decode(&self.result[0]).map_err(|_| "decode powhash as base64 error")?;
+            if powhash.len() != 32 {
+                return Err("powhash bytes != 32");
+            }
+            let powhash = H256::from_slice(&powhash);
+
+            let nbits = u32::from_str_radix(&self.result[1], 16).map_err(|_| "decode nbits error")?;
+            let exp = nbits >> 24;
+            let base = nbits << 8 >> 8;
+            let target = U256::from(base) << (256 - 24) >> exp;
+
+            let height = usize::from_str_radix(&self.result[2], 16).map_err(|_| "decode height error")?;
+            let epoch = height / 30000;
+
+            return Ok(Job {
+                powhash,
+                epoch,
+                id: 0,
+                target: H256::from_uint(&target),
+                nonce: rand::random::<u64>().into(),
+            });
+        }
+
+        let seedhash = clean_0x(&self.result[1]).parse().map_err(|_| "decode seedhash error")?;
         let mut target = clean_0x(&self.result[2]).to_owned();
         if target.len() < 64 {
             target = "0".repeat(64 - target.len()) + &target;
         }
 
         Ok(Job {
-            powhash: clean_0x(&self.result[0]).parse().map_err(|_| "get powhash error")?,
-            target: target.parse().map_err(|_| "get target error")?,
+            powhash: clean_0x(&self.result[0]).parse().map_err(|_| "decode powhash error")?,
+            target: target.parse().map_err(|_| "decode target error")?,
             epoch: get_epoch_number(&seedhash).map_err(|()| "get epoch error")?,
             nonce: rand::random::<u64>().into(),
             id: 0,
@@ -120,7 +158,7 @@ fn test_hashrate_generate() {
 // {"id":2,"method":"eth_getWork","params":[]}
 pub fn make_login(config: &Config) -> Req {
     let login = format!(
-        r#"{{"id":1,"method":"{}","params":["{}.{}"],"worker":"{}"}}
+        r#"{{"id":1,"method":"{}","params":["{}.{}"],"worker":"{}","compact":true}}
     {{"id":1,"method":"{}","params":[]}}"#,
         METHOD_LOGIN, config.user, config.worker, config.worker, METHOD_GET_WORK
     );

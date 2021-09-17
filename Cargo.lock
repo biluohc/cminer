@@ -228,6 +228,7 @@ name = "cminer"
 version = "0.2.12"
 dependencies = [
  "anyhow",
+ "base64",
  "bitcoin",
  "bitcoin_hashes",
  "bytes",
