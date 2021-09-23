@@ -3,7 +3,6 @@ use bitcoin::util::uint::Uint256;
 use bitcoin::BlockHeader;
 use bitcoin::Transaction;
 use bitcoin::TxMerkleNode;
-use bitcoin_hashes::sha256d;
 use bitcoin_hashes::sha256d::Hash;
 use bitcoin_hashes::Hash as HashTrait;
 use bytes::Buf;
@@ -27,9 +26,8 @@ pub fn cal_merkle_root_by_branch(mut tx_hash: VecDeque<HashRaw>) -> Hash {
         data.extend_from_slice(&first);
         data.extend_from_slice(&second);
 
-        let hash = sha256d::Hash::hash(&data[..]);
-        let buf = hash.into_inner();
-        tx_hash.push_front(buf);
+        let hash = sha256d(data.as_slice());
+        tx_hash.push_front(hash);
     }
 
     assert_eq!(1, tx_hash.len());
@@ -188,18 +186,12 @@ impl Computer {
         self.bytes.copy_from_slice(header_bytes.as_slice());
     }
 
-    #[cfg(any(feature = "btc-bitcoinrs"))]
     #[inline]
     pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
-        use bitcoin::hash_types::BlockHash;
-        use std::io::Write;
-
         let bytes = &mut self.bytes;
-        (&mut bytes[76..]).write_all(&nonce.to_le_bytes()).unwrap();
+        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
 
-        let hash = BlockHash::hash(&bytes[..]);
-        let hashraw = hash.into_inner();
-
+        let hashraw = sha256d(bytes);
         let target = target_uint256_from_hashraw(hashraw);
         if target <= job.target {
             return Some(Solution { target, nonce, id: atomic_id() });
@@ -207,62 +199,29 @@ impl Computer {
 
         None
     }
+}
 
-    #[cfg(any(feature = "btc-openssl"))]
-    #[inline]
-    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
-        use openssl::sha::sha256;
+#[cfg(any(feature = "btc-openssl"))]
+#[inline]
+fn sha256d(bytes: &[u8]) -> HashRaw {
+    use openssl::sha::sha256;
+    sha256(sha256(bytes).as_ref())
+}
 
-        let bytes = &mut self.bytes;
-        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
+#[cfg(any(feature = "btc-ring"))]
+#[inline]
+fn sha256d(bytes: &[u8]) -> HashRaw {
+    use ring::digest;
+    digest::digest(&digest::SHA256, digest::digest(&digest::SHA256, bytes).as_ref()).as_ref().try_into().unwrap()
+}
 
-        let hashraw = sha256(sha256(bytes).as_ref());
+#[test]
+fn btc_sha256d() {
+    for (idx, c) in ('0'..='9').into_iter().enumerate() {
+        let s = (0..idx).into_iter().map(|x| (c as u8 + x as u8) as char).collect::<String>();
 
-        let target = target_uint256_from_hashraw(hashraw);
-        if target <= job.target {
-            return Some(Solution { target, nonce, id: atomic_id() });
-        }
-
-        None
-    }
-
-    #[cfg(any(feature = "btc-sha2"))]
-    #[inline]
-    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
-        use sha2::{Digest, Sha256};
-
-        let bytes = &mut self.bytes;
-        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
-
-        let mut hasher = Sha256::new();
-        hasher.update(bytes);
-        let out = hasher.finalize_reset();
-        hasher.update(out);
-        let hashraw = hasher.finalize();
-
-        let target = target_uint256_from_hashraw(hashraw);
-        if target <= job.target {
-            return Some(Solution { target, nonce, id: atomic_id() });
-        }
-
-        None
-    }
-
-    #[cfg(any(feature = "btc-ring"))]
-    #[inline]
-    pub fn compute(&mut self, job: &Job, nonce: u32) -> Option<Solution> {
-        use ring::digest;
-
-        let bytes = &mut self.bytes;
-        (&mut bytes[76..]).copy_from_slice(&nonce.to_le_bytes());
-
-        let hashraw = digest::digest(&digest::SHA256, digest::digest(&digest::SHA256, bytes).as_ref());
-
-        let target = target_uint256_from_hashraw(hashraw);
-        if target <= job.target {
-            return Some(Solution { target, nonce, id: atomic_id() });
-        }
-
-        None
+        let h0 = bitcoin_hashes::sha256d::Hash::hash(s.as_bytes()).into_inner();
+        let h1 = sha256d(s.as_bytes());
+        assert_eq!(h0, h1, "sha256d impl error: {}", s);
     }
 }

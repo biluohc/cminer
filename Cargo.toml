@@ -16,23 +16,18 @@ codegen-units = 1
 
 [features]
 default = [ "btc-openssl" ]
-# cargo build --release  --no-default-features --features btc-sha2
+# cargo build --release  --no-default-features --features btc-ring
 # 4.3m+-@2c-9880H
 btc-openssl = [ "openssl" ]
-# 2.8m+-@2c-9880H
-btc-sha2 = [ "sha2" ]
 # 4.0m+-@2c-9880H
 btc-ring = [ "ring" ]
-# 2.2m+-@2c-9880H
-btc-bitcoinrs = [ ]
 
 [dependencies]
 nonblock-logger = { version = "0.1", features = [ "color", "dbg" ] }
 serde = { version = "1.0.101", features = ["derive"] }
 bigint = { package = "ethereum-types", version = "0.8.0" }
-openssl = { version = "0.10", features = ["vendored"], optional = true }
-sha2 = { version =  "0.9.5", features = ["asm"], optional = true }
-ring = { version = "0.16.20", optional = true }
+openssl = { version = "0.10.35", features = ["vendored"], optional = true }
+ring = { version = "0.16.20", optional = true } # version used by rustls
 thiserror = "1.0.5"
 structopt = "0.3.9"
 anyhow = "1.0.19"
