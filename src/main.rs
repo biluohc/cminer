@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match listener.accept().await {
             Ok((socket, sa)) => {
-                println!("accept {}", sa);
+                println!("accept {}, tls={}", sa, acceptor.is_some());
                 tokio::spawn(handle_socket(socket, sa, conf.clone(), acceptor.clone()));
             }
             Err(e) => {
@@ -142,12 +142,12 @@ async fn handle_socket(
         if b2[0] == b'N' {
             if let Some(tls) = acceptor {
                 let socket = tls.accept(socket).await?;
-                try_copy(socket, sa, socket2pg, socket2pg_sa, start).await;
+                try_copy(socket, sa, socket2pg, socket2pg_sa, start, ans).await;
             } else {
-                try_copy(socket, sa, socket2pg, socket2pg_sa, start).await;
+                try_copy(socket, sa, socket2pg, socket2pg_sa, start, ans).await;
             }
         } else {
-            eprintln!("{} connect to pg is enable tls, close it", sa);
+            eprintln!("{}-{} connect to pg is enable tls, close it", sa, ans);
         }
     } else {
         eprintln!("{} try peek failed costed {:?}", sa, start.elapsed());
@@ -162,6 +162,7 @@ async fn try_copy<RW, RW2>(
     socket2pg: RW2,
     socket2pg_sa: std::net::SocketAddr,
     start: std::time::Instant,
+    tls: &str,
 ) where
     RW: AsyncRead + AsyncWriteExt + std::marker::Unpin,
     RW2: AsyncRead + AsyncWriteExt + std::marker::Unpin,
@@ -175,8 +176,9 @@ async fn try_copy<RW, RW2>(
     } {
         Ok((up, down)) => {
             println!(
-                "{}<->{} finished costed {:?}, up: {}, down: {}",
+                "{}-{}<->{} finished costed {:?}, up: {}, down: {}",
                 sa,
+                tls,
                 socket2pg_sa,
                 start.elapsed(),
                 up,
@@ -185,8 +187,9 @@ async fn try_copy<RW, RW2>(
         }
         Err(e) => {
             println!(
-                "{}<->{} try join costed {:?}, failed: {}",
+                "{}-{}<->{} try join costed {:?}, failed: {}",
                 sa,
+                tls,
                 socket2pg_sa,
                 start.elapsed(),
                 e
