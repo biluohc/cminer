@@ -15,7 +15,7 @@ use tokio::io::AsyncRead;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::net::*;
-use tokio_rustls::rustls::internal::pemfile::{certs, rsa_private_keys};
+use tokio_rustls::rustls::internal::pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
 use tokio_rustls::rustls::{Certificate, NoClientAuth, PrivateKey, ServerConfig};
 use tokio_rustls::TlsAcceptor;
 use tokio_util::codec::{BytesCodec, Framed};
@@ -51,10 +51,22 @@ fn load_certs<P: AsRef<Path>>(path: P) -> io::Result<Vec<Certificate>> {
         .map(|mut certs| certs.drain(..).collect())
 }
 
-fn load_keys<P: AsRef<Path>>(path: P) -> io::Result<Vec<PrivateKey>> {
-    rsa_private_keys(&mut BufReader::new(File::open(path.as_ref())?))
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))
-        .map(|mut keys| keys.drain(..).collect())
+pub fn load_key(path: &str) -> io::Result<PrivateKey> {
+    use std::io::Seek;
+
+    let keyfile = std::fs::File::open(path)?;
+    let mut reader = io::BufReader::new(keyfile);
+    let mut keys = rsa_private_keys(&mut reader)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
+
+    if keys.is_empty() {
+        reader.seek(io::SeekFrom::Start(0))?;
+        keys = pkcs8_private_keys(&mut reader)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
+    }
+
+    assert_eq!(keys.len(), 1);
+    Ok(keys.remove(0))
 }
 
 #[tokio::main]
@@ -73,11 +85,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut acceptor = None;
     if conf.cert.is_some() && conf.key.is_some() {
         let certs = load_certs(conf.cert.as_ref().unwrap().as_str())?;
-        let mut keys = load_keys(conf.key.as_ref().unwrap().as_str())?;
+        let key = load_key(conf.key.as_ref().unwrap().as_str())?;
 
         let mut config = ServerConfig::new(NoClientAuth::new());
         config
-            .set_single_cert(certs, keys.remove(0))
+            .set_single_cert(certs, key)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
         acceptor = Some(TlsAcceptor::from(Arc::new(config)));
     }
