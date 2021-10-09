@@ -5,7 +5,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::*;
 use tokio_rustls::TlsAcceptor;
 
-use crate::common::try_copy;
+use crate::common::{set_tcp_keepalive, try_copy};
 use crate::config::Postgres;
 use crate::state::State;
 
@@ -44,6 +44,7 @@ pub async fn handle_socket(
 
         let mut socket2pg = TcpStream::connect(&upstream.url).await?;
         let socket2pg_sa = socket2pg.peer_addr()?;
+        set_tcp_keepalive(&socket2pg, state.proxy.tcp_keepalive_secs)?;
         socket2pg.write(&b1).await?;
         socket2pg.read(&mut b2[..1]).await?;
 

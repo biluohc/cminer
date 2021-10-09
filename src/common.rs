@@ -6,6 +6,18 @@ use std::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::codec::{BytesCodec, Framed};
 
+use socket2::{SockRef, TcpKeepalive};
+
+// https://github.com/tokio-rs/tokio/issues/3082
+pub fn set_tcp_keepalive<'a, S: Into<SockRef<'a>>>(socket: S, secs: u64) -> io::Result<()> {
+    if secs > 0 {
+        let tcp_keepalive = TcpKeepalive::new().with_time(std::time::Duration::from_secs(secs));
+        let socket_ref = socket.into();
+        socket_ref.set_tcp_keepalive(&tcp_keepalive)?;
+    }
+    Ok(())
+}
+
 pub async fn try_copy<RW, RW2>(
     socket: RW,
     sa: std::net::SocketAddr,

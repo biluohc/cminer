@@ -1,5 +1,6 @@
 listen = "0.0.0.0:5433"
 force_tls = false
+tcp_keepalive_secs = 600
 metric_interval_secs = 60
 # 0 meannings auto: number of cpus
 workers = 1

@@ -65,6 +65,8 @@ pub struct Proxy {
     pub workers: usize,
     #[serde(default)]
     pub metric_interval_secs: u64,
+    #[serde(default)]
+    pub tcp_keepalive_secs: u64,
 }
 
 impl Proxy {

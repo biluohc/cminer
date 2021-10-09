@@ -94,7 +94,9 @@ where
 
     loop {
         tokio::select! {
-            res = listener.accept() => match res {
+            res = listener.accept() => match res.and_then(|sa| {
+                common::set_tcp_keepalive(&sa.0, state.proxy.tcp_keepalive_secs).map(|_|sa)
+            }) {
                 Ok((socket, sa)) => {
                     info!(
                         "accept {}, tls={}",
