@@ -1,215 +1,117 @@
 #[macro_use]
 extern crate serde;
+#[macro_use]
+extern crate log;
 
-use bytes::{Bytes, BytesMut};
 use clap::Clap;
-use futures::SinkExt;
-use futures::StreamExt;
-use std::convert::TryInto;
-use std::fs::File;
-use std::io::{self, BufReader};
-use std::net::ToSocketAddrs;
-use std::path::{Path, PathBuf};
+use std::io;
+use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::io::AsyncRead;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
-use tokio::net::*;
-use tokio_rustls::rustls::internal::pemfile::{certs, pkcs8_private_keys, rsa_private_keys};
-use tokio_rustls::rustls::{Certificate, NoClientAuth, PrivateKey, ServerConfig};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::runtime::Builder;
 use tokio_rustls::TlsAcceptor;
-use tokio_util::codec::{BytesCodec, Framed};
 
-#[derive(clap::Clap, Debug)]
-pub struct Opts {
-    // The number of occurrences of the `v/verbose` flag
-    /// Verbose mode (-v, -vv, -vvv, etc.)
-    #[clap(short, long, parse(from_occurrences))]
-    pub verbose: u8,
+pub mod config;
+pub mod state;
+use config::*;
+use state::State;
 
-    /// Config file
-    #[clap(
-        short = 'c',
-        long = "config",
-        parse(from_os_str),
-        default_value = "pgproxy.toml"
-    )]
-    pub config: PathBuf,
-}
+pub mod common;
+pub mod postgres;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct PgProxy {
-    pub listen: String,
-    pub pg: String,
-    pub cert: Option<String>,
-    pub key: Option<String>,
-}
-
-fn load_certs<P: AsRef<Path>>(path: P) -> io::Result<Vec<Certificate>> {
-    certs(&mut BufReader::new(File::open(path.as_ref())?))
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))
-        .map(|mut certs| certs.drain(..).collect())
-}
-
-pub fn load_key(path: &str) -> io::Result<PrivateKey> {
-    use std::io::Seek;
-
-    let keyfile = std::fs::File::open(path)?;
-    let mut reader = io::BufReader::new(keyfile);
-    let mut keys = rsa_private_keys(&mut reader)
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
-
-    if keys.is_empty() {
-        reader.seek(io::SeekFrom::Start(0))?;
-        keys = pkcs8_private_keys(&mut reader)
-            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))?;
-    }
-
-    assert_eq!(keys.len(), 1);
-    Ok(keys.remove(0))
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> io::Result<()> {
     let opt = Opts::parse();
-    println!("opt: {:?}", opt);
+
+    let key = "RUST_LOG";
+    if std::env::var(key).is_err() {
+        let l = match opt.verbose {
+            0 => "warn",
+            1 => "info",
+            2 => "debug",
+            _more => "trace",
+        };
+        std::env::set_var(key, l);
+    }
+    env_logger::init();
+
+    info!("opts: {:?}", opt);
     let conf_str = std::fs::read_to_string(&opt.config)?;
-    let conf = Arc::new(toml::from_str::<PgProxy>(&conf_str)?);
+    debug!("conf:\n{}", conf_str);
 
-    let lis = conf
-        .listen
-        .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| io::Error::from(io::ErrorKind::AddrNotAvailable))?;
+    let conf = toml::from_str::<config::Proxy>(&conf_str)?;
+    let acceptor = conf.load_cert()?;
 
-    let mut acceptor = None;
-    if conf.cert.is_some() && conf.key.is_some() {
-        let certs = load_certs(conf.cert.as_ref().unwrap().as_str())?;
-        let key = load_key(conf.key.as_ref().unwrap().as_str())?;
-
-        let mut config = ServerConfig::new(NoClientAuth::new());
-        config
-            .set_single_cert(certs, key)
-            .map_err(|err| io::Error::new(io::ErrorKind::InvalidInput, err))?;
-        acceptor = Some(TlsAcceptor::from(Arc::new(config)));
-    }
-
-    let listener = TcpListener::bind(lis).await?;
-    loop {
-        match listener.accept().await {
-            Ok((socket, sa)) => {
-                println!("accept {}, tls={}", sa, acceptor.is_some());
-                tokio::spawn(handle_socket(socket, sa, conf.clone(), acceptor.clone()));
-            }
-            Err(e) => {
-                println!("accept failed {}", e);
-            }
-        }
-    }
-}
-
-async fn handle_socket(
-    mut socket: TcpStream,
-    sa: std::net::SocketAddr,
-    config: Arc<PgProxy>,
-    acceptor: Option<TlsAcceptor>,
-) -> io::Result<()> {
-    let mut b1 = [0; 8];
-    let mut b2 = [0; 8];
-
-    let start = std::time::Instant::now();
-    let n = socket.peek(&mut b1).await?;
-
-    let a = u32::from_be_bytes(b1[..4].try_into().unwrap());
-    let b = u32::from_be_bytes(b1[4..].try_into().unwrap());
-    println!("{}: {:?}, {} {}", sa, b1, a, b);
-
-    // Read the data
-    assert_eq!(n, socket.read(&mut b2[..n]).await?);
-    assert_eq!(&b1[..n], &b2[..n]);
-
-    // 如果是 tls， 就答 S, 否则答 N
-    let tls = acceptor.is_some();
-    if a == 8 && b == 80877103 {
-        let ans = if tls { "S" } else { "N" };
-        socket.write(ans.as_bytes()).await?;
-
-        let mut socket2pg = TcpStream::connect(&config.pg).await?;
-        let socket2pg_sa = socket2pg.peer_addr()?;
-        socket2pg.write(&b1).await?;
-        socket2pg.read(&mut b2[..1]).await?;
-
-        if b2[0] == b'N' {
-            if let Some(tls) = acceptor {
-                let socket = tls.accept(socket).await?;
-                try_copy(socket, sa, socket2pg, socket2pg_sa, start, ans).await;
-            } else {
-                try_copy(socket, sa, socket2pg, socket2pg_sa, start, ans).await;
-            }
-        } else {
-            eprintln!("{}-{} connect to pg is enable tls, close it", sa, ans);
-        }
+    let rt = if conf.workers == 1 {
+        Builder::new_current_thread().enable_all().build()?
+    } else if conf.workers == 0 {
+        Builder::new_multi_thread().enable_all().build()?
     } else {
-        eprintln!("{} try peek failed costed {:?}", sa, start.elapsed());
-    }
+        Builder::new_multi_thread()
+            .worker_threads(conf.workers)
+            .enable_all()
+            .build()?
+    };
+
+    rt.block_on(fun(conf, acceptor))?;
 
     Ok(())
 }
 
-async fn try_copy<RW, RW2>(
-    socket: RW,
-    sa: std::net::SocketAddr,
-    socket2pg: RW2,
-    socket2pg_sa: std::net::SocketAddr,
-    start: std::time::Instant,
-    tls: &str,
-) where
-    RW: AsyncRead + AsyncWriteExt + std::marker::Unpin,
-    RW2: AsyncRead + AsyncWriteExt + std::marker::Unpin,
-{
-    let (mut socket_w, mut socket_r) = Framed::new(socket, BytesCodec::new()).split();
-    let (mut socket2pg_w, mut socket2pg_r) = Framed::new(socket2pg, BytesCodec::new()).split();
+async fn fun(conf: Proxy, acceptor: Option<TlsAcceptor>) -> io::Result<()> {
+    match (conf.postgres.is_empty(), conf.mysql.is_empty()) {
+        (true, true) => error!("both postgres and mysql servers, exit"),
+        (false, true) => {
+            info!("running with postgres mode");
+            let state = conf.to_postgres();
 
-    match tokio::try_join! {
-        copy(&mut socket_r, &mut socket2pg_w),
-        copy(&mut socket2pg_r, &mut socket_w)
-    } {
-        Ok((up, down)) => {
-            println!(
-                "{}-{}<->{} finished costed {:?}, up: {}, down: {}",
-                sa,
-                tls,
-                socket2pg_sa,
-                start.elapsed(),
-                up,
-                down
-            );
+            return try_listen(state, acceptor, |socket, sa, s, a| {
+                tokio::spawn(postgres::handle_socket(socket, sa, s, a));
+            })
+            .await;
         }
-        Err(e) => {
-            println!(
-                "{}-{}<->{} try join costed {:?}, failed: {}",
-                sa,
-                tls,
-                socket2pg_sa,
-                start.elapsed(),
-                e
-            );
+        (true, false) => {
+            info!("running with mysql mode");
         }
-    }
+        _ => error!("no servers, exit"),
+    };
+
+    std::process::exit(1)
 }
 
-async fn copy<R, W>(mut r: R, mut w: W) -> io::Result<u64>
+async fn try_listen<T: AsRef<str>, F>(
+    state: State<T>,
+    acceptor: Option<TlsAcceptor>,
+    handle_socket: F,
+) -> std::io::Result<()>
 where
-    R: StreamExt<Item = std::result::Result<BytesMut, io::Error>> + std::marker::Unpin,
-    W: SinkExt<Bytes, Error = io::Error> + std::marker::Unpin,
+    F: Fn(TcpStream, SocketAddr, Arc<State<T>>, Option<TlsAcceptor>) + 'static,
 {
-    let mut count = 0;
-    while let Some(res) = r.next().await {
-        let bs = res?.freeze();
-        let size = bs.len();
-        w.send(bs).await?;
-        count += size as u64;
-    }
+    let state = Arc::new(state);
+    let listener = TcpListener::bind(state.proxy.listen).await?;
+    let mut metric = tokio::time::interval(std::time::Duration::from_secs(
+        state.proxy.metric_interval_secs,
+    ));
 
-    Ok(count)
+    loop {
+        tokio::select! {
+            res = listener.accept() => match res {
+                Ok((socket, sa)) => {
+                    info!(
+                        "accept {}, tls={}",
+                        sa,
+                        acceptor.is_some(),
+
+                    );
+                    handle_socket(socket, sa, state.clone(), acceptor.clone());
+                }
+                Err(e) => {
+                    info!("accept failed {}", e);
+                }
+            },
+
+            _ = metric.tick() => {
+                info!("metric: {}", serde_json::to_string(&state.to_metric()).unwrap())
+            }
+        }
+    }
 }

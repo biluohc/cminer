@@ -1,8 +1,13 @@
 listen = "0.0.0.0:5433"
-pg = "127.0.0.1:5432"
-
+force_tls = false
+metric_interval_secs = 60
+# 0 meannings auto: number of cpus
+workers = 1
 # cert = "fullchain.pem"
 # key = "privkey.pem"
+
+[[postgres]]
+url = "127.0.0.1:5432"
 
 # docker run -d  -v `pwd`:/opt -v /etc/letsencrypt:/etc/letsencrypt -v /usr/local/bin:/usr/local/bin --restart always --stop-signal SIGINT --log-opt max-size=10m --log-opt max-file=5 --network host --name pgproxy debian:10 pgproxy -v -c /opt/pgproxy.toml
 
