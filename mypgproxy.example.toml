@@ -10,5 +10,5 @@ workers = 1
 [[postgres]]
 url = "127.0.0.1:5432"
 
-# docker run -d  -v `pwd`:/opt -v /etc/letsencrypt:/etc/letsencrypt -v /usr/local/bin:/usr/local/bin --restart always --stop-signal SIGINT --log-opt max-size=10m --log-opt max-file=5 --network host --name pgproxy debian:10 pgproxy -v -c /opt/pgproxy.toml
+# docker run -d  -v `pwd`:/opt -v /etc/letsencrypt:/etc/letsencrypt -v /usr/local/bin:/usr/local/bin --restart always --stop-signal SIGINT --log-opt max-size=10m --log-opt max-file=3 --network host --name mypgproxy debian:11 mypgproxy -v -c /opt/mypgproxy.toml
 
