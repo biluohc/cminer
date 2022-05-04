@@ -47,6 +47,7 @@ impl FormJob {
                 powhash,
                 epoch,
                 id: 0,
+                seedhash: None,
                 target: H256::from_uint(&target),
                 nonce: rand::random::<u64>().into(),
             });
@@ -60,6 +61,7 @@ impl FormJob {
 
         Ok(Job {
             powhash: clean_0x(&self.result[0]).parse().map_err(|_| "decode powhash error")?,
+            seedhash: Some(clean_0x(&self.result[1]).parse().map_err(|_| "decode seedhash error")?),
             target: target.parse().map_err(|_| "decode target error")?,
             epoch: get_epoch_number(&seedhash).map_err(|()| "get epoch error")?,
             nonce: rand::random::<u64>().into(),
@@ -90,6 +92,7 @@ pub struct Job {
     pub target: H256,
     pub epoch: usize,
     pub nonce: U64,
+    pub seedhash: Option<H256>,
 }
 
 #[derive(Debug, Clone)]

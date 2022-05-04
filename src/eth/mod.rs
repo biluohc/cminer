@@ -56,7 +56,14 @@ impl Handle for State<EthJob> {
         if let Ok(jf) = serde_json::from_str::<FormJob>(&resp) {
             match jf.to_job() {
                 Ok(mut j) => {
-                    info!("job: {}, epoch: {}, diff: {}, nonce: {:0x}", j.powhash, j.epoch, target_to_difficulty(&j.target), j.nonce);
+                    info!(
+                        "job: {}, epoch: {}, seedhash: {:?}, diff: {}, nonce: {:0x}",
+                        j.powhash,
+                        j.epoch,
+                        j.seedhash.map(|h| h.to_string()),
+                        target_to_difficulty(&j.target),
+                        j.nonce
+                    );
                     let mut epoch_is_old = true;
                     let mut lock = self.value().lock();
                     let lock = &mut *lock;

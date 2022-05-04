@@ -112,17 +112,20 @@ impl Computer {
         );
 
         let mut full = Arc::from(FullBytes::new(0));
+        let seedhash = ethash::get_seedhash(if etc { epoch * 2 } else { epoch });
+
         if wokrers > 0 {
             let mut light = vec![0; light_size];
-            ethash::make_cache(&mut light, ethash::get_seedhash(if etc { epoch * 2 } else { epoch }));
+
+            ethash::make_cache(&mut light, seedhash);
             let light = Arc::from(light);
 
             full = Arc::from(FullBytes::new(full_size));
             make_full(&full, &light);
 
-            warn!("Computer::new ok, epoch: {}", epoch);
+            warn!("Computer::new ok, epoch-seedhash: {}-{}", epoch, seedhash);
         } else {
-            error!("Computer::new skip, wokrers: {}", wokrers);
+            error!("Computer::new skip, wokrers: {}, epoch-seedhash: {}-{}", wokrers, epoch, seedhash);
         };
 
         Self { epoch, full }
