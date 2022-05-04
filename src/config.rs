@@ -95,7 +95,10 @@ impl Config {
         self
     }
     pub fn tls_config(&self) -> Option<(TlsConnector, String)> {
-        self.domain.clone().map(|mut d| {
+        Self::tls_config_for_proxy(self.domain.clone())
+    }
+    pub fn tls_config_for_proxy(domain: Option<String>) -> Option<(TlsConnector, String)> {
+        domain.map(|mut d| {
             let mut config = ClientConfig::new();
 
             if d.is_empty() {

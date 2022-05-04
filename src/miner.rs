@@ -1,6 +1,6 @@
 use futures::{future, FutureExt, SinkExt, StreamExt};
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt},
     net::TcpStream,
     runtime::Builder,
     sync::mpsc,
@@ -78,10 +78,12 @@ async fn connect<C, S>(state: &S, sc: &mut ReqReceiver, count: usize, start_time
 where
     S: Handler<C>,
 {
-    let socket = timeout(timeoutv(), TcpStream::connect(&state.config().pool.sa)).await??;
-    info!("#{} tcp connect to {} ok", count, state.config().pool);
+    let config = state.config();
+    let tls = config.tls_config();
+    let socket = timeout(timeoutv(), connect_maybe_with_http_proxy(&config.pool.str, &config.pool.sa, tls.is_some())).await??;
+    info!("#{} tcp connect to {} ok", count, config.pool);
 
-    if let Some((connector, domain)) = state.config().tls_config() {
+    if let Some((connector, domain)) = tls {
         let domain = DNSNameRef::try_from_ascii_str(&domain)?;
         let socket = timeout(timeoutv(), connector.connect(domain, socket)).await??;
         info!("#{} tls connect to {} ok", count, state.config().pool);
@@ -89,6 +91,131 @@ where
         handle_socket(socket, state, sc, count, start_time).await
     } else {
         handle_socket(socket, state, sc, count, start_time).await
+    }
+}
+
+async fn connect_maybe_with_http_proxy(dst: &str, dst_sa: &std::net::SocketAddr, tls: bool) -> Result<MaybleTlsStream> {
+    let env_key = if tls { "https_proxy" } else { "http_proxy" };
+    let env = std::env::var(env_key).ok();
+    if let Some(proxy) = env {
+        warn!("connect with {} ..", env_key);
+        let url = url::Url::parse(&proxy)?;
+        let https = url.scheme() == "https";
+
+        let host = url.host_str().ok_or_else(|| format_err!("proxy invalid: without host"))?;
+        let port = url.port().unwrap_or_else(|| if https { 443 } else { 80 });
+        let host_port = format!("{}:{}", host, port);
+        warn!("connect with {} {}://{:?} ..", proxy, host_port, url.scheme());
+
+        let mut proxyc = TcpStream::connect(host_port).await?;
+        let proxyc_addr = proxyc.peer_addr()?;
+        info!("connect {} with proxy-{} ok: {}", dst, host, proxyc_addr);
+        if https {
+            let domain = url.host_str().ok_or_else(|| format_err!("proxy invalid: without domain"))?;
+            let (tls_connector, domain) = Config::tls_config_for_proxy(Some(domain.to_owned())).unwrap();
+            let mut proxyc = tls_connector.connect(DNSNameRef::try_from_ascii_str(&domain)?, proxyc).await?;
+            info!("tls-handshake with proxy-{} ok: {}", host, proxyc_addr);
+            handle_http_proxy(&mut proxyc, dst, &url).await?;
+            Ok(MaybleTlsStream::Tls(proxyc))
+        } else {
+            handle_http_proxy(&mut proxyc, dst, &url).await?;
+            Ok(MaybleTlsStream::Tcp(proxyc))
+        }
+    } else {
+        let socket = TcpStream::connect(dst_sa).await?;
+        Ok(MaybleTlsStream::Tcp(socket))
+    }
+}
+
+async fn handle_http_proxy<A>(conn: &mut A, dst: &str, url: &url::Url) -> Result<()>
+where
+    A: AsyncReadExt + AsyncWriteExt + Unpin,
+{
+    let user = url.username();
+    let pass = url.password().unwrap_or_default();
+
+    let mut bytes = format!("CONNECT {} HTTP/1.1\r\n", dst);
+    if user.len() + pass.len() > 0 {
+        let auth = base64::encode(format!("{}:{}", user, pass));
+        bytes.push_str("proxy-authorization: Basic ");
+        bytes.push_str(&auth);
+        bytes.push_str("\r\n");
+    }
+    bytes.push_str("\r\n");
+
+    conn.write_all(bytes.as_bytes()).await?;
+
+    let mut buf = [0u8; 128];
+    let readc = conn.read(&mut buf).await?;
+    let resp = std::str::from_utf8(&buf[..readc])?;
+    let words = resp.split_whitespace().collect::<Vec<_>>();
+    debug!("proxy.resp[..{}]: {}", readc, resp);
+
+    if words[1] == "200" {
+        return Ok(());
+    }
+
+    Err(format_err!("proxy responds !200: {} {}", words[1], words[2]))
+}
+
+pub enum MaybleTlsStream {
+    Tcp(TcpStream),
+    Tls(tokio_rustls::client::TlsStream<TcpStream>),
+}
+
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
+use tokio::io::{self, ReadBuf};
+impl AsyncRead for MaybleTlsStream {
+    #[inline]
+    fn poll_read(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Tcp(x) => Pin::new(x).poll_read(cx, buf),
+            Self::Tls(x) => Pin::new(x).poll_read(cx, buf),
+        }
+    }
+}
+
+impl AsyncWrite for MaybleTlsStream {
+    #[inline]
+    fn poll_write(self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+        match self.get_mut() {
+            Self::Tcp(x) => Pin::new(x).poll_write(cx, buf),
+            Self::Tls(x) => Pin::new(x).poll_write(cx, buf),
+        }
+    }
+
+    #[inline]
+    fn poll_write_vectored(self: Pin<&mut Self>, cx: &mut Context<'_>, bufs: &[std::io::IoSlice<'_>]) -> Poll<io::Result<usize>> {
+        match self.get_mut() {
+            Self::Tcp(x) => Pin::new(x).poll_write_vectored(cx, bufs),
+            Self::Tls(x) => Pin::new(x).poll_write_vectored(cx, bufs),
+        }
+    }
+
+    fn is_write_vectored(&self) -> bool {
+        match &self {
+            Self::Tcp(x) => x.is_write_vectored(),
+            Self::Tls(x) => x.is_write_vectored(),
+        }
+    }
+
+    #[inline]
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Tcp(x) => Pin::new(x).poll_flush(cx),
+            Self::Tls(x) => Pin::new(x).poll_flush(cx),
+        }
+    }
+
+    #[inline]
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        match self.get_mut() {
+            Self::Tcp(x) => Pin::new(x).poll_shutdown(cx),
+            Self::Tls(x) => Pin::new(x).poll_shutdown(cx),
+        }
     }
 }
 
