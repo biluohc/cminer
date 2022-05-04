@@ -12,7 +12,7 @@ pub fn fun() {
     let job = jobform.to_job().unwrap();
 
     info!("epoch: {}", job.epoch);
-    let computer = Computer::new(job.epoch, 1);
+    let computer = Computer::new(job.epoch, 1, false);
 
     let now = std::time::Instant::now();
     let mut nonce = 0.into();
@@ -95,7 +95,12 @@ impl fmt::Debug for Computer {
 }
 
 impl Computer {
-    pub fn new(epoch: usize, wokrers: usize) -> Self {
+    // ethash epoch_length is 30000
+    // etchash epoch_length is 60000
+    pub fn new(mut epoch: usize, wokrers: usize, etc: bool) -> Self {
+        if etc {
+            epoch /= 2;
+        }
         let light_size = ethash::get_cache_size(epoch);
         let full_size = ethash::get_full_size(epoch);
         warn!(
@@ -109,7 +114,7 @@ impl Computer {
         let mut full = Arc::from(FullBytes::new(0));
         if wokrers > 0 {
             let mut light = vec![0; light_size];
-            ethash::make_cache(&mut light, ethash::get_seedhash(epoch));
+            ethash::make_cache(&mut light, ethash::get_seedhash(if etc { epoch * 2 } else { epoch }));
             let light = Arc::from(light);
 
             full = Arc::from(FullBytes::new(full_size));

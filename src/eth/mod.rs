@@ -70,14 +70,14 @@ impl Handle for State<EthJob> {
                                 mem::drop(oc);
                                 epoch_is_old = false;
                                 lock.jobsc.add_slow(1);
-                                let c = Computer::new(j.epoch, self.config().workers);
+                                let c = Computer::new(j.epoch, self.config().workers, self.config().testnet);
                                 EthJob::Compute((c, j))
                             }
                         }
                         EthJob::Sleep => {
                             epoch_is_old = false;
                             lock.jobsc.add_slow(1);
-                            let c = Computer::new(j.epoch, self.config().workers);
+                            let c = Computer::new(j.epoch, self.config().workers, self.config().testnet);
                             EthJob::Compute((c, j))
                         }
                         EthJob::Exit => return Ok(()),

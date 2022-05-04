@@ -45,7 +45,7 @@ pub struct Config {
     #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
     pub currency: Currency,
-    #[structopt(short, long, help = "enable testnet(current work for ckb only)")]
+    #[structopt(short, long, help = "enable testnet(work for ckb testnet and etchash(ecip-1099))")]
     pub testnet: bool,
     #[structopt(short, long, default_value = "sp_yos", help = "User")]
     pub user: String,
