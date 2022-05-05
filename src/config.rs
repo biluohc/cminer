@@ -1,12 +1,31 @@
-use clap::arg_enum;
 use nonblock_logger::log::LevelFilter::{self, *};
 
-arg_enum! {
-    #[derive(Debug, Clone, Copy)]
-    pub enum Currency {
-        Btc,
-        Ckb,
-        Eth,
+#[derive(Clone, Copy, Debug)]
+pub enum Currency {
+    Btc,
+    Ckb,
+    Eth,
+}
+
+impl clap::ArgEnum for Currency {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Eth, Self::Ckb, Self::Btc]
+    }
+    fn to_possible_value<'a>(&self) -> Option<clap::PossibleValue<'a>> {
+        Some(
+            match self {
+                Self::Eth => "eth",
+                Self::Ckb => "ckb",
+                Self::Btc => "btc",
+            }
+            .into(),
+        )
+    }
+}
+
+impl Default for Currency {
+    fn default() -> Self {
+        Self::Ckb
     }
 }
 
@@ -16,7 +35,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, Clone, StructOpt)]
+#[derive(Debug, Clone)]
 pub struct PoolAddr {
     pub str: String,
     pub sa: SocketAddr,
@@ -36,26 +55,26 @@ impl std::str::FromStr for PoolAddr {
     }
 }
 
-#[derive(Debug, Clone, StructOpt)]
+#[derive(clap::Parser, Debug, Clone)]
 pub struct Config {
-    #[structopt(short, long, help = "The address of pool: Host/IP:port")]
+    #[clap(short, long, help = "The address of pool: Host/IP:port")]
     pub pool: PoolAddr,
-    #[structopt(short, long, default_value = "128", help = "Default is NumCPUs, if arg bigger than it, will reset as it")]
+    #[clap(short, long, default_value = "128", help = "Default is NumCPUs, if arg bigger than it, will reset as it")]
     pub workers: usize,
-    #[structopt(short, long, default_value = "ckb")]
-    #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
+    #[clap(arg_enum, default_value_t, ignore_case = true, short, long, default_value = "ckb")]
+    #[clap(help = "Currency")]
     pub currency: Currency,
-    #[structopt(short, long, help = "enable testnet(work for ckb testnet and etchash(ecip-1099))")]
+    #[clap(short, long, help = "enable testnet(work for ckb testnet and etchash(ecip-1099))")]
     pub testnet: bool,
-    #[structopt(short, long, default_value = "user", help = "The name of User")]
+    #[clap(short, long, default_value = "user", help = "The name of User")]
     pub user: String,
-    #[structopt(short, long, default_value = "rig", help = "The name of Rig")]
+    #[clap(short, long, default_value = "rig", help = "The name of Rig")]
     pub rig: String,
-    #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
+    #[clap(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
     pub verbose: u8,
-    #[structopt(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
+    #[clap(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
     pub expire: u64,
-    #[structopt(short, long, help = "the domain for enable tls [An empty domain name means skipping the verify]")]
+    #[clap(short, long, help = "the domain for enable tls [An empty domain name means skipping the verify]")]
     pub domain: Option<String>,
 }
 
@@ -75,6 +94,8 @@ impl Config {
         U: Into<String>,
         R: Into<String>,
     {
+        use clap::ArgEnum;
+
         Self {
             testnet,
             workers,
@@ -82,7 +103,7 @@ impl Config {
             expire: 100,
             domain: None,
             pool: pool.as_ref().parse().expect("resolve name failed"),
-            currency: currency.as_ref().parse().unwrap_or(Currency::Eth),
+            currency: Currency::from_str(currency.as_ref(), true).unwrap_or(Currency::Ckb),
             user: user.into(),
             rig: rig.into(),
         }

@@ -1,8 +1,6 @@
 #[macro_use]
 extern crate serde;
 #[macro_use]
-extern crate structopt;
-#[macro_use]
 extern crate anyhow;
 #[macro_use]
 extern crate thiserror;
@@ -31,9 +29,9 @@ pub fn format(base: &BaseFormater, record: &Record) -> String {
 }
 
 fn main() {
-    use structopt::StructOpt;
+    use clap::Parser;
 
-    let config = Config::from_args().fix_workers();
+    let config = Config::parse().fix_workers();
     let pkg = env!("CARGO_PKG_NAME");
     let log = config.log();
     println!("{}: {:?}, {:?}", pkg, log, config);
