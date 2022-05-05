@@ -70,7 +70,7 @@ pub struct Config {
     pub user: String,
     #[clap(short, long, default_value = "rig", help = "The name of Rig")]
     pub rig: String,
-    #[clap(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
+    #[clap(short, long, parse(from_occurrences), help = "Loglevel: -v(Info), -vv(Debug), -vvv+(Trace)")]
     pub verbose: u8,
     #[clap(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
     pub expire: u64,
