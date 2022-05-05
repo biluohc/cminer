@@ -66,6 +66,10 @@ pub fn atomic_id() -> usize {
 }
 
 pub fn sleep_secs(secs: u64) {
+    if secs == 0 {
+        return;
+    }
+
     use std::{thread, time::Duration};
     thread::sleep(Duration::from_secs(secs))
 }

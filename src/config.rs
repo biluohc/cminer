@@ -76,6 +76,8 @@ pub struct Config {
     pub verbose: u8,
     #[clap(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
     pub expire: u64,
+    #[clap(short, long, default_value = "0", help = "thread will sleep the secs after submit a solution")]
+    pub sleep: u64,
     #[clap(short, long, help = "the domain for enable tls [An empty domain name means skipping the verify]")]
     pub domain: Option<String>,
 }
@@ -102,6 +104,7 @@ impl Config {
             testnet,
             workers,
             verbose,
+            sleep: 0,
             expire: 100,
             domain: None,
             pool: pool.as_ref().parse().expect("resolve name failed"),

@@ -62,6 +62,7 @@ pub struct Worker<C> {
     pub sender: ReqSender,
     pub idx: u64,
     pub step: u64,
+    pub sleep: u64,
 }
 
 pub trait Run: std::fmt::Debug + Send + 'static {
@@ -174,6 +175,7 @@ where
 
             let mut worker = Worker {
                 testnet: self.config().testnet,
+                sleep: self.config().sleep,
                 job: (*self).clone(),
                 jobsc: lock.jobsc.clone(),
                 sender: self.sender().clone(),

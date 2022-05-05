@@ -211,6 +211,7 @@ impl Run for Worker<BtcJob> {
                         solution.target,
                     );
                     make_submit(&solution, j).map(|req| self.sender.try_send(Ok(req)).map_err(|e| error!("try send solution error: {:?}", e)).ok());
+                    util::sleep_secs(self.sleep);
                 }
                 self.hashrate.add(1);
                 nonce += 1;

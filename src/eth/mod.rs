@@ -157,6 +157,7 @@ impl Run for Worker<EthJob> {
                 if let Some(s) = c.compute(j, &nonce) {
                     warn!("found a solution: id: {}, nonce: {:0x}, powhash: {}, diff: {}", s.id, nonce, j.powhash, target_to_difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(Ok(req)).map_err(|e| error!("try send solution error: {:?}", e)).ok());
+                    util::sleep_secs(self.sleep);
                 }
                 self.hashrate.add(1);
                 nonce = nonce + self.step;
