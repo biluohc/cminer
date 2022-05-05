@@ -174,7 +174,7 @@ pub fn make_login(config: &Config) -> Req {
         env!("CARGO_PKG_VERSION"),
         METHOD_AUTHORIZE,
         config.user,
-        config.worker
+        config.rig
     );
     (0, METHOD_SUBSCRIBE, login).into()
 }

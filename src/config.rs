@@ -40,17 +40,17 @@ impl std::str::FromStr for PoolAddr {
 pub struct Config {
     #[structopt(short, long, help = "The address of pool: Host/IP:port")]
     pub pool: PoolAddr,
-    #[structopt(long, default_value = "128", help = "Default is NumCPUs, if arg bigger than it, will reset as it")]
+    #[structopt(short, long, default_value = "128", help = "Default is NumCPUs, if arg bigger than it, will reset as it")]
     pub workers: usize,
     #[structopt(short, long, default_value = "ckb")]
     #[structopt(possible_values = &Currency::variants(), case_insensitive = true, help ="Currency")]
     pub currency: Currency,
     #[structopt(short, long, help = "enable testnet(work for ckb testnet and etchash(ecip-1099))")]
     pub testnet: bool,
-    #[structopt(short, long, default_value = "sp_yos", help = "User")]
+    #[structopt(short, long, default_value = "user", help = "The name of User")]
     pub user: String,
-    #[structopt(short, long, default_value = "0v0", help = "Name")]
-    pub worker: String,
+    #[structopt(short, long, default_value = "rig", help = "The name of Rig")]
+    pub rig: String,
     #[structopt(short, long, default_value = "0", parse(from_occurrences), help = "Loglevel: -v(Info), -v -v(Debug), -v -v -v +(Trace)")]
     pub verbose: u8,
     #[structopt(short, long, default_value = "100", help = "program will reconnect if the job not updated for so many seconds")]
@@ -68,12 +68,12 @@ impl Config {
             _ => Trace,
         }
     }
-    pub fn new2<C, P, U, W>(currency: C, testnet: bool, pool: P, workers: usize, user: U, worker: W, verbose: u8) -> Self
+    pub fn new2<C, P, U, R>(currency: C, testnet: bool, pool: P, workers: usize, user: U, rig: R, verbose: u8) -> Self
     where
         C: AsRef<str>,
         P: AsRef<str>,
         U: Into<String>,
-        W: Into<String>,
+        R: Into<String>,
     {
         Self {
             testnet,
@@ -84,7 +84,7 @@ impl Config {
             pool: pool.as_ref().parse().expect("resolve name failed"),
             currency: currency.as_ref().parse().unwrap_or(Currency::Eth),
             user: user.into(),
-            worker: worker.into(),
+            rig: rig.into(),
         }
     }
     pub fn fix_workers(mut self) -> Self {

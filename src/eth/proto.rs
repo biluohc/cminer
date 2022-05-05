@@ -163,7 +163,7 @@ pub fn make_login(config: &Config) -> Req {
     let login = format!(
         r#"{{"id":1,"method":"{}","params":["{}.{}"],"worker":"{}","compact":true}}
     {{"id":1,"method":"{}","params":[]}}"#,
-        METHOD_LOGIN, config.user, config.worker, config.worker, METHOD_GET_WORK
+        METHOD_LOGIN, config.user, config.rig, config.rig, METHOD_GET_WORK
     );
     (1, METHOD_LOGIN, login).into()
 }
