@@ -21,3 +21,4 @@
 * etchash: https://github.com/eth-classic/etchash
 * go-etchash: https://github.com/etclabscore/go-etchash
 * Protocol: https://github.com/etclabscore/open-etc-pool/blob/master/docs/STRATUM.md
+* etc.ethermine.org:4444: `cminer -c eth --testnet -p asia1-etc.ethermine.org:4444 -u "abababababababababababababababababababab" -w 0 -v`
