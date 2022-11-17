@@ -47,6 +47,7 @@ fn main() {
 
     let _handle = NonblockLogger::new()
         .formater(formater)
+        .quiet()
         .filter(filter)
         .expect("add filiter failed")
         .log_to_stdout()
