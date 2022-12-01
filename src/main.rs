@@ -9,6 +9,7 @@ pub extern crate nonblock_logger;
 
 use nonblock_logger::{
     chrono::Local,
+    current_thread_name,
     log::{LevelFilter, Record},
     BaseFilter, BaseFormater, FixedLevel, NonblockLogger,
 };
@@ -16,16 +17,18 @@ use nonblock_logger::{
 pub fn format(base: &BaseFormater, record: &Record) -> String {
     let level = FixedLevel::with_color(record.level(), base.color_get()).length(base.level_get()).into_colored().into_coloredfg();
 
-    format!(
-        "[{} {}#{}:{} {}] {}\n",
-        Local::now().format("%Y-%m-%d %H:%M:%S.%3f"),
-        level,
-        record.module_path().unwrap_or("*"),
-        // record.file().unwrap_or("*"),
-        record.line().unwrap_or(0),
-        nonblock_logger::current_thread_name(),
-        record.args()
-    )
+    current_thread_name(|ctn| {
+        format!(
+            "[{} {}#{}:{} {}] {}\n",
+            Local::now().format("%Y-%m-%d %H:%M:%S.%3f"),
+            level,
+            record.module_path().unwrap_or("*"),
+            // record.file().unwrap_or("*"),
+            record.line().unwrap_or(0),
+            ctn,
+            record.args()
+        )
+    })
 }
 
 fn main() {

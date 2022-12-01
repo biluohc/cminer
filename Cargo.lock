@@ -862,9 +862,9 @@ dependencies = [
 
 [[package]]
 name = "nonblock-logger"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f5fa32e66610d53b79ebbc9861c2605226577c73b793ac10b721e19d2e6f197"
+checksum = "b97774fd18826a1a7ae2ea4541fb2a929e39be1993c4f39ed7297ca3296fc078"
 dependencies = [
  "chrono",
  "crossbeam-channel",

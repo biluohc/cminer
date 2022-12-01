@@ -23,7 +23,7 @@ btc-openssl = [ "openssl" ]
 btc-ring = [ "ring" ]
 
 [dependencies]
-nonblock-logger = { version = "0.2", features = [ "color", "dbg" ] }
+nonblock-logger = { version = "0.2.2", features = [ "color", "dbg" ] }
 serde = { version = "1.0.101", features = ["derive"] }
 bigint = { package = "ethereum-types", version = "0.8.0" }
 openssl = { version = "0.10.35", features = ["vendored"], optional = true }
