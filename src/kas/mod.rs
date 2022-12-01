@@ -185,7 +185,7 @@ impl Run for Worker<KasJob> {
 
             if let Some(j) = job.as_ref() {
                 if let Some(s) = computer.compute(j, nonce) {
-                    warn!("found a solution: id: {}, nonce: {:0x}, jobid: {}, diff: {}", s.id, nonce, j.jobid, target2difficulty(&s.target));
+                    warn!("found a solution: id: {}, nonce: {:016x}, jobid: {}, diff: {}", s.id, nonce, j.jobid, target2difficulty(&s.target));
                     make_submit(&s, j).map(|req| self.sender.try_send(Ok(req)).map_err(|e| error!("try send solution error: {:?}", e)).ok());
                     util::sleep_secs(self.sleep);
                 }

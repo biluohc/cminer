@@ -58,6 +58,7 @@ impl std::str::FromStr for PoolAddr {
 }
 
 #[derive(clap::Parser, Debug, Clone)]
+#[clap(version = env!("CARGO_PKG_VERSION"))]
 pub struct Config {
     #[clap(short, long, help = "The address of pool: Host/IP:port")]
     pub pool: PoolAddr,
