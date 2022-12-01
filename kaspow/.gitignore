@@ -1,0 +1,11 @@
+.idea
+.DS_Store
+.db
+*.bk
+node_modules
+dist
+target
+math/Cargo.lock
+!Cargo.lock
+*.js
+*.json

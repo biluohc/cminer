@@ -68,14 +68,16 @@ pub mod util;
 pub mod btc;
 pub mod ckb;
 pub mod eth;
+pub mod kas;
 
 use crate::config::{Config, Currency::*};
-use crate::{btc::BtcJob, ckb::CkbJob, eth::EthJob};
+use crate::{btc::BtcJob, ckb::CkbJob, eth::EthJob, kas::KasJob};
 
 fn fun(config: Config) {
     match config.currency {
         Btc => miner::fun::<BtcJob>(config),
         Ckb => miner::fun::<CkbJob>(config),
         Eth => miner::fun::<EthJob>(config),
+        Kas => miner::fun::<KasJob>(config),
     }
 }

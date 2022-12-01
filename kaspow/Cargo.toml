@@ -1,0 +1,25 @@
+[package]
+edition = "2021"
+name = "kaspow"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+faster-hex = "0.6"
+math = {version="*", path = "./math"}
+hashes = {version="*", path = "./hashes"}
+
+[dev-dependencies]
+criterion = { version = "0.4", default-features = false }
+
+[[bench]]
+harness = false
+name = "bench"
+
+# [workspace]
+# members = [
+#   "math",
+#   "hashes",
+# ]

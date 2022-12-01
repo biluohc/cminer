@@ -1,0 +1,9 @@
+[package]
+name = "math"
+edition = "2021"
+version = "0.1.0"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+faster-hex = "0.6"
+rand_chacha = "0.3.1"

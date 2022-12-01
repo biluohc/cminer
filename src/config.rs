@@ -5,11 +5,12 @@ pub enum Currency {
     Btc,
     Ckb,
     Eth,
+    Kas,
 }
 
 impl clap::ArgEnum for Currency {
     fn value_variants<'a>() -> &'a [Self] {
-        &[Self::Eth, Self::Ckb, Self::Btc]
+        &[Self::Eth, Self::Ckb, Self::Btc, Self::Kas]
     }
     fn to_possible_value<'a>(&self) -> Option<clap::PossibleValue<'a>> {
         Some(
@@ -17,6 +18,7 @@ impl clap::ArgEnum for Currency {
                 Self::Eth => "eth",
                 Self::Ckb => "ckb",
                 Self::Btc => "btc",
+                Self::Kas => "kas",
             }
             .into(),
         )
