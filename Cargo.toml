@@ -1,9 +1,9 @@
 [package]
 name = "cminer"
 edition = "2018"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Wspsxing <biluohc@qq.com>"]
-description = "A cpuminer impl by Rust, supported currency(CKB, BTC, ETH, ETC..)"
+description = "A cpuminer impl by Rust, supported currency(CKB, BTC, ETH, ETC, KAS..)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.release]

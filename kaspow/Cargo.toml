@@ -2,8 +2,7 @@
 edition = "2021"
 name = "kaspow"
 version = "0.1.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# ISC: https://github.com/kaspanet/rusty-kaspa
 
 [dependencies]
 anyhow = "1.0"

@@ -80,7 +80,7 @@ impl Handle for State<KasJob> {
                             }
 
                             let diff = target2difficulty(&j.target);
-                            info!("job: {}, timestamp: {}, powhash: {}, diff: {}, nonce: {:0x}", j.jobid, j.timestamp, j.powhash, diff, j.nonce);
+                            info!("job: {}, timestamp: {}, diff: {}, nonce: {:016x}", j.jobid, j.timestamp, diff, j.nonce);
 
                             if diff < 1u64 {
                                 fatal!("don't received set_difficulty");

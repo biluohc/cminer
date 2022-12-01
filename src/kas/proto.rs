@@ -105,7 +105,7 @@ impl MethodForm {
                 let diff = difficulty_decompress(p.0);
                 let target = target2difficulty(&diff.into());
 
-                info!("{} {}: {} target: {}", METHOD_SET_TARGET, p.0, diff, target);
+                info!("{} {}: {}", method, p.0, diff);
                 Ok(MethodParams::Target(target))
             })
         } else if [METHOD_SET_EXTRANONCE, "set_extranonce"].contains(&method) {
@@ -114,7 +114,7 @@ impl MethodForm {
                 return Err("malform set_extranonce");
             }
             let info = parse_nonce(hex.unwrap());
-            info!("{} {}: {} {}bytes", METHOD_SET_EXTRANONCE, hex.unwrap(), info.0, info.1);
+            info!("{} {}: {} {}bytes", method, hex.unwrap(), info.0, info.1);
             Ok(MethodParams::Nonce1t(info))
         } else {
             Err("unkown MethodForm")

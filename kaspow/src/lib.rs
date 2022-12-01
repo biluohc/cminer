@@ -15,7 +15,7 @@ pub use hashes::{Hash, PowHash};
 pub use math::Uint256;
 
 pub fn target2difficulty(target: &Uint256) -> Uint256 {
-    if *target == Uint256::from(1) {
+    if *target == 1u64 {
         return Uint256::MAX;
     }
 

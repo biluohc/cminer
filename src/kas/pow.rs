@@ -3,9 +3,7 @@ use kaspow::{PowHash, Uint256};
 use crate::kas::proto::{Job, Solution};
 use crate::util::atomic_id;
 
-pub type Cache = [u8; 48];
-pub type Nonce = [u8; 16];
-pub type Hash = [u8; 32];
+const POWHASH_SIZE: usize = 25;
 
 #[derive(Clone)]
 pub struct Computer {
@@ -15,12 +13,15 @@ pub struct Computer {
 
 impl Computer {
     pub fn new(_testnet: bool) -> Self {
-        Self { hasher: Default::default() }
+        let this = Self { hasher: Default::default() };
+        assert_eq!(this.hasher.0.len(), POWHASH_SIZE);
+        this
     }
+    #[inline]
     pub fn compute_raw(&mut self, job: &Job, nonce: u64) -> Solution {
-        // last finalize_with_nonce pollute it
+        // last finalize_with_nonce have polluted it
         unsafe {
-            std::ptr::copy_nonoverlapping((&job.matrixhasher.1 .0[..]).as_ptr(), (&mut self.hasher.0[..]).as_mut_ptr(), 25);
+            std::ptr::copy_nonoverlapping((&job.matrixhasher.1 .0[..]).as_ptr(), (&mut self.hasher.0[..]).as_mut_ptr(), POWHASH_SIZE);
         }
 
         let hash = self.hasher.finalize_with_nonce(nonce);
