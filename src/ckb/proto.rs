@@ -98,7 +98,7 @@ pub fn make_submit(solution: &Solution, job: &Job) -> Option<Req> {
 pub fn make_login(config: &Config) -> Req {
     let login = format!(
         r#"{{"id":0,"method":"{}","params":["{}-{}",null]}}
-        {{"id":0,"method":"{}","params":["{}.{}","x"]}}"#,
+{{"id":0,"method":"{}","params":["{}.{}","x"]}}"#,
         METHOD_SUBSCRIBE,
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
